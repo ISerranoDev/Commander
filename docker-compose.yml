@@ -1,0 +1,17 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    stdin_open: true   # Mantener el stdin abierto para interactuar con el contenedor
+    tty: true
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./app:/app
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      - ENV=development
+      - DISPLAY=host.docker.internal:0
+    network_mode: "host"
+    command: [ "bash" ]
