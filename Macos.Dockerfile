@@ -5,9 +5,6 @@ FROM golang:1.23.1
 # Establecer el directorio de trabajo dentro del contenedor
 WORKDIR /app
 
-# Instalar dependencias necesarias (bash, git, etc.)
-RUN apt-get update && apt-get install -y bash git curl x11-apps
-
 # Instalar dependencias necesarias
 RUN apt-get update && apt-get install -y \
     bash \
@@ -36,9 +33,6 @@ COPY . /app
 
 # Establecer las variables de entorno necesarias
 ENV ENV=development
-
-# Exponer el puerto en el que correrá la aplicación
-EXPOSE 4000
 
 # Entrar en bash al iniciar el contenedor
 CMD ["sh"]
