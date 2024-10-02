@@ -67,3 +67,18 @@ Construye y ejecuta el contenedor con Docker Compose:
   Construye y ejecuta los servicios con Docker Compose:
 
         docker-compose up
+
+## Hacer build de la aplicación
+- Si hemos cambiado de arquitectura, el primer paso será borrar node modules y package.lock.json:
+
+      cd frontend
+      rm -rf node_modules package-lock.json
+
+- Luego, ejecuta el siguiente comando:
+
+      npm install
+      npm run build
+
+- Para construir la aplicación, ejecuta el siguiente comando:
+
+      wails build

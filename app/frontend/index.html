@@ -1,12 +1,82 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html >
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>wails-scaffold.iserranodev.net</title>
+    <title>WailsCommander</title>
 </head>
 <body>
-<div id="app"></div>
-<script src="./src/main.js" type="module"></script>
+    <header class="container text-end pb-0">
+        <input type="text" id="search-bar" placeholder="Search for a Host..." oninput="searchTerm(this.value)"/>
+        <button class="btn-sm" id="add-host-button" onclick="addHost()"><i class="si si-plus-square"></i> Add Host</button>
+    </header>
+
+    <main class="container">
+        <div class="grid"  id="host-container" >
+
+        </div>
+    </main>
+
+    <aside>
+
+        <a href="javascript:void(0)" class="close-btn" onclick="hideAside()">&times;</a>
+
+        <nav>
+            <form id="host-form">
+                <input type="hidden" name="id" disabled value="0"/>
+                <fieldset>
+                    <label>
+                        Host Name
+                        <input
+                            type="text"
+                            name="name"
+                            placeholder="Host name"
+                        />
+                    </label>
+                    <label>
+                        Host
+                        <input
+                            type="text"
+                            name="host"
+                            placeholder="192.168.1.1"
+                        />
+                    </label>
+                    <label>
+                        Port
+                        <input
+                                type="number"
+                                name="port"
+                                placeholder="22"
+                                value="22"
+                        />
+                    </label>
+                    <label>
+                        User
+                        <input
+                                type="text"
+                                name="user"
+                                placeholder="Username"
+                        />
+                    </label>
+                    <label>
+                        Password
+                        <input
+                                type="password"
+                                name="pass"
+                                placeholder="*******"
+                        />
+                    </label>
+                </fieldset>
+
+                <input
+                    type="submit"
+                    value="Save"
+                />
+            </form>
+        </nav>
+
+    </aside>
+
+    <script src="./src/main.js" type="module"></script>
 </body>
 </html>

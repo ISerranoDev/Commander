@@ -1,0 +1,133 @@
+body {
+    min-height: 100vh;
+    transition: padding-right 0.5s;
+    padding-left: 30px;
+    padding-right: 30px;
+    background: linear-gradient(90deg, rgba(43,17,48,1) 0%, rgba(52,21,59,1) 25%, rgba(43,17,48,1) 50%, rgba(52,21,59,1) 75%, rgba(43,17,48,1) 100%);
+    background-size: 200%;
+    animation: moveBackground 15s linear infinite;
+}
+
+@keyframes moveBackground {
+    0% {
+        background-position: 0;
+    }
+    100% {
+        background-position: 100%;
+    }
+}
+
+input{
+    box-shadow: inset 2px 2px 18px 0px rgba(0,0,0,0.75);
+}
+
+button{
+    --pico-background-color: #3d1845 !important;
+    --pico-color: #d47de4 !important;
+    border: 1px solid rgba(212, 125, 228, 0.4) !important;
+}
+
+button:hover{
+    --pico-color: #cfacd5 !important;
+    border: 1px solid rgba(212, 125, 228, 0.7) !important;
+}
+
+#host-container{
+    grid-template-columns: repeat(auto-fill, minmax(300px, 3fr)) !important;
+}
+
+.text-end{
+    text-align: end;
+}
+
+.host-article, #add-host-button{
+    box-shadow: 2px 2px 16px 0px rgba(0,0,0,0.34);
+}
+
+.host-article>header, .host-article>footer{
+    background: transparent;
+}
+
+.host-article:hover, .host-article>header:hover, .host-article>footer:hover{
+    transition: all 0.3s;
+    background-color: #262d3c;
+}
+
+.btn-action {
+    opacity: 0;
+    margin-left: 10px;
+    padding: 5px 10px 3px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn-sm{
+    margin-left: 10px;
+    padding: 5px 10px 3px 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+
+.host-article:hover .btn-action {
+    transition: all 0.3s;
+    opacity: 1;
+}
+
+.pb-0{
+    padding-bottom: 0;
+}
+
+/* ASIDE */
+
+aside{
+    height: 100%;
+    width: 0;
+    position: fixed;
+    top: 0;
+    right: 0;
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px;
+    background-color: #35153c;
+    border-left: 2px solid #2b3443;
+    box-shadow: -5px 0px 17px 0px rgba(0,0,0,0.75);
+
+}
+
+aside nav{
+    width: 250px;
+}
+
+aside .close-btn {
+    text-decoration: none;
+    position: absolute !important;
+    top: 0;
+    right: 20px;
+    font-size: 36px;
+    margin-left: 50px;
+}
+
+aside.show{
+    transition: width 0.5s;
+    width: 310px;
+    padding: 60px 30px;
+}
+
+aside form{
+    font-size: 14px;
+}
+
+aside form input{
+    font-size: 16px;
+    padding: 7px 10px 5px 10px !important;
+    height: auto !important;
+}
+
+aside form [type="submit"]{
+    font-size: 16px !important;
+}
+

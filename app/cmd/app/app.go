@@ -1,13 +1,15 @@
-package main
+package app
 
 import (
 	"context"
 	"fmt"
+	"wails-scaffold.iserranodev.net/internal/models"
 )
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx         context.Context
+	hostRecords *models.HostRecordModel
 }
 
 // NewApp creates a new App application struct
@@ -17,7 +19,7 @@ func NewApp() *App {
 
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
-func (a *App) startup(ctx context.Context) {
+func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
