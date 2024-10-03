@@ -1,10 +1,10 @@
 package app
 
 import (
+	"fmt"
 	"wails-scaffold.iserranodev.net/internal/models"
 )
 
-// Greet returns a greeting for the given name
 func (a *App) LoadHosts() ([]models.HostRecord, error) {
 	hosts, err := a.hostRecords.GetHostRecords()
 	if err != nil {
@@ -14,7 +14,6 @@ func (a *App) LoadHosts() ([]models.HostRecord, error) {
 	return hosts, nil
 }
 
-// Greet returns a greeting for the given name
 func (a *App) SaveHost(ID string, Host string, Port int, Name string, User string, Pass string) (bool, string) {
 
 	if ID != "0" {
@@ -32,7 +31,6 @@ func (a *App) SaveHost(ID string, Host string, Port int, Name string, User strin
 	return true, "Registered successfully"
 }
 
-// Greet returns a greeting for the given name
 func (a *App) RemoveHost(ID string) (bool, string) {
 
 	_, err := a.hostRecords.RemoveHostRecord(ID)
@@ -41,4 +39,33 @@ func (a *App) RemoveHost(ID string) (bool, string) {
 	}
 
 	return true, "Removed successfully"
+}
+
+func (a *App) StartSSHSession(hostID string) error {
+	sshSession, err := a.sshSessions.StartSSHSession(hostID)
+	if err != nil {
+		return err
+	}
+	a.sshSession = sshSession
+	return nil
+}
+
+func (a *App) SendSSHCommand(command string) (string, error) {
+	if a.sshSession == nil {
+		return "", fmt.Errorf("no SSH session started")
+	}
+	return a.sshSession.SendCommand(command)
+}
+
+func (a *App) CloseSSHSession() error {
+	// Verificar si hay una sesión SSH activa
+	if a.sshSession == nil {
+		return fmt.Errorf("no hay una sesión SSH activa para cerrar")
+	}
+
+	// Cerrar la sesión SSH y el cliente
+	a.sshSession.Close()
+	a.sshSession = nil
+
+	return nil
 }

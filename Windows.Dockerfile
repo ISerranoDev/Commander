@@ -17,6 +17,7 @@ RUN apt-get update -o Acquire::ForceIPv4=true && apt-get install -y \
     g++ \
     dbus-x11 \
     libxxf86vm-dev \
+    mingw-w64 \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean && ldconfig

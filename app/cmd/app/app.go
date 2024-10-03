@@ -10,6 +10,8 @@ import (
 type App struct {
 	ctx         context.Context
 	hostRecords *models.HostRecordModel
+	sshSessions *models.SSHSessionModel
+	sshSession  *models.SSHSession
 }
 
 // NewApp creates a new App application struct

@@ -6,12 +6,13 @@ import './assets/css/main.css';
 import 'izitoast/dist/css/iziToast.min.css';
 
 import logo from './assets/images/logo-universal.png';
-import {LoadHosts, RemoveHost, SaveHost} from "../wailsjs/go/app/App";
+import {LoadHosts, RemoveHost, SaveHost, SendSSHCommand, StartSSHSession} from "../wailsjs/go/app/App";
 import iziToast from "izitoast";
 
 
 window.onload = function () {
     loadHosts();
+    startCommandTyping();
 };
 
 
@@ -45,6 +46,11 @@ window.loadHosts = function () {
                 }
 
                 document.getElementById('host-container').innerHTML = html;
+                document.querySelectorAll('.host-article .host-name').forEach((domElement) => {
+                    domElement.addEventListener('click', function (){
+                        runHost(domElement.dataset.id);
+                    })
+                });
             })
             .catch((err) => {
                 console.error(err);
@@ -205,3 +211,42 @@ document.querySelector('#host-form').addEventListener('submit', function (event)
             // Aquí puedes mostrar un mensaje de error al usuario si lo deseas
         });
 });
+
+/* CONSOLE */
+
+
+
+window.startCommandTyping = function () {
+    let consoleDiv = document.getElementById('console');
+    let input = document.getElementById('console-input');
+
+    input.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            const command = input.value;
+            input.value = '';
+
+            // Mostrar el comando en el "chat"
+            consoleDiv.innerHTML += `<div>> ${command}</div>`;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+
+            // Enviar comando al backend
+            SendSSHCommand(command).then(response => {
+                // Mostrar la respuesta en el "chat"
+                consoleDiv.innerHTML += `<div>${response}</div>`;
+                consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            });
+        }
+    });
+}
+
+window.runHost = function (hostId){
+
+    StartSSHSession(hostId).then((result) => {
+
+    })
+    .catch((err) => {
+        console.error('Error:', err);
+
+    });
+}
+

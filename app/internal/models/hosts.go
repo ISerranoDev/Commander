@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/ssh"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type HostRecordInterface interface {
@@ -13,6 +15,7 @@ type HostRecordInterface interface {
 	SaveHostRecord(Host string, Port int, Name string, User string, Pass string) ([]HostRecord, error)
 	EditHostRecord(ID string, Host string, Port int, Name string, User string, Pass string) ([]HostRecord, error)
 	RemoveHostRecord(ID string) (bool, error)
+	SSHConnect(ID string) (string, error)
 }
 
 type HostRecord struct {
@@ -191,4 +194,59 @@ func (h *HostRecordModel) RemoveHostRecord(ID string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (h *HostRecordModel) SSHConnect(ID string) (string, error) {
+	// Cargar los registros de hosts
+	hostRecords, err := LoadFromFile()
+	if err != nil {
+		return "", err
+	}
+
+	// Buscar el registro por ID
+	var targetHost HostRecord
+	found := false
+	for _, record := range hostRecords {
+		if record.ID == ID {
+			targetHost = record
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return "", fmt.Errorf("host with ID %s not found", ID)
+	}
+
+	// Configuración SSH
+	config := &ssh.ClientConfig{
+		User: targetHost.User,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(targetHost.Pass),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         10 * time.Second,
+	}
+
+	// Establecer conexión
+	address := fmt.Sprintf("%s:%d", targetHost.Host, targetHost.Port)
+	client, err := ssh.Dial("tcp", address, config)
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to %s: %v", targetHost.Host, err)
+	}
+	defer client.Close()
+
+	// Ejecutar un comando remoto de prueba
+	session, err := client.NewSession()
+	if err != nil {
+		return "", fmt.Errorf("failed to create session: %v", err)
+	}
+	defer session.Close()
+
+	output, err := session.CombinedOutput("echo 'Conexión SSH exitosa'")
+	if err != nil {
+		return "", fmt.Errorf("failed to run command: %v", err)
+	}
+
+	return string(output), nil
 }

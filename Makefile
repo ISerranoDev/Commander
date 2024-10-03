@@ -2,11 +2,12 @@
 
 file_selected := -f docker-compose.$(os).yml
 
-update-display:
-	# Define el comando para obtener la dirección IP
+ifeq ($(os), windows)
 	HOST_IP := $(shell powershell -Command "(ipconfig | Select-String 'IPv4' | Select-Object -First 1) -replace '.*: ', ''")
-	# Combina la IP con :0
 	DISPLAY := $(HOST_IP):0
+endif
+
+update-display:
 	@powershell -Command "(Get-Content windows.env) -replace 'DISPLAY=.*', 'DISPLAY=$(DISPLAY)' | Set-Content windows.env"
 
 up:
