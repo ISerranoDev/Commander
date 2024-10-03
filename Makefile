@@ -1,16 +1,15 @@
 # Levanta la arquitectura
 
 file_selected := -f docker-compose.$(os).yml
-# Define el comando para obtener la dirección IP
-HOST_IP := $(shell powershell -Command "(ipconfig | Select-String 'IPv4' | Select-Object -First 1) -replace '.*: ', ''")
-
-# Combina la IP con :0
-DISPLAY := $(HOST_IP):0
 
 update-display:
+	# Define el comando para obtener la dirección IP
+	HOST_IP := $(shell powershell -Command "(ipconfig | Select-String 'IPv4' | Select-Object -First 1) -replace '.*: ', ''")
+	# Combina la IP con :0
+	DISPLAY := $(HOST_IP):0
 	@powershell -Command "(Get-Content windows.env) -replace 'DISPLAY=.*', 'DISPLAY=$(DISPLAY)' | Set-Content windows.env"
 
-up: update-display
+up:
 	@docker-compose $(file_selected) up -d
 
 ps:

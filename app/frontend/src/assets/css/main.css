@@ -1,3 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Press+Start+2P&display=swap');
+
+*{
+    --pico-font-family: "Chakra Petch", sans-serif !important;
+    --pico-font-size: 95% !important;
+}
+
 body {
     min-height: 100vh;
     transition: padding-right 0.5s;
@@ -24,12 +31,32 @@ input{
 button{
     --pico-background-color: #3d1845 !important;
     --pico-color: #d47de4 !important;
-    border: 1px solid rgba(212, 125, 228, 0.4) !important;
 }
 
 button:hover{
     --pico-color: #cfacd5 !important;
+}
+
+.btn-primary{
+    background-color: #3d1845 !important;
+    color: #d47de4 !important;
+    border: 1px solid rgba(212, 125, 228, 0.4) !important;
+}
+
+.btn-primary:hover{
+    --pico-color: #cfacd5 !important;
     border: 1px solid rgba(212, 125, 228, 0.7) !important;
+}
+
+.btn-danger{
+    background-color: #451818;
+    color: #e47d7d;
+    border: 1px solid rgba(228, 125, 125, 0.4) !important;
+}
+
+.btn-danger:hover{
+    --pico-color: #d5acac !important;
+    border: 1px solid rgba(228, 125, 125, 0.7) !important;
 }
 
 #host-container{
@@ -38,6 +65,26 @@ button:hover{
 
 .text-end{
     text-align: end;
+}
+
+
+.host-article{
+    display: flex;
+    justify-content: space-between;
+}
+
+.host-article .host-name {
+    white-space: nowrap;
+    overflow-x: auto;
+    margin-right: 5px;
+}
+
+.host-article .host-name span{
+    line-height: 32px;
+}
+
+.host-article .host-buttons{
+    white-space: nowrap;
 }
 
 .host-article, #add-host-button{
@@ -55,7 +102,7 @@ button:hover{
 
 .btn-action {
     opacity: 0;
-    margin-left: 10px;
+    margin-left: 3px;
     padding: 5px 10px 3px 10px;
     border: none;
     border-radius: 5px;
@@ -131,3 +178,30 @@ aside form [type="submit"]{
     font-size: 16px !important;
 }
 
+/* iziToast */
+
+.iziToast{
+    background-color: rgb(48, 13, 55) !important;
+    border: 1px solid rgba(212, 125, 228, 0.4) !important;
+}
+
+.iziToast-title, .iziToast-message{
+    color: #d47de4 !important;
+}
+
+.iziToast-close{
+    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QAAKqNIzIAAAAJcEhZcwAADdcAAA3XAUIom3gAAAAHdElNRQfgCR4OIQIPSao6AAAAwElEQVRIx72VUQ6EIAwFmz2XB+AConhjzqTJ7JeGKhLYlyx/BGdoBVpjIpMJNjgIZDKTkQHYmYfwmR2AfAqGFBcO2QjXZCd24bEggvd1KBx+xlwoDpYmvnBUUy68DYXD77ESr8WDtYqvxRex7a8oHP4Wo1Mkt5I68Mc+qYqv1h5OsZmZsQ3gj/02h6cO/KEYx29hu3R+VTTwz6D3TymIP1E8RvEiiVdZfEzicxYLiljSxKIqlnW5seitTW6uYnv/Aqh4whX3mEUrAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDE2LTA5LTMwVDE0OjMzOjAyKzAyOjAwl6RMVgAAACV0RVh0ZGF0ZTptb2RpZnkAMjAxNi0wOS0zMFQxNDozMzowMiswMjowMOb59OoAAAAZdEVYdFNvZnR3YXJlAHd3dy5pbmtzY2FwZS5vcmeb7jwaAAAAAElFTkSuQmCC) no-repeat 50% 50% !important;
+    background-size: 8px !important;
+}
+
+.swal2-title{
+    font-size: 25px;
+}
+
+.swal2-html-container{
+    font-size: 17px !important;
+}
+
+div:where(.swal2-icon){
+    font-size: 0.7rem !important;
+}

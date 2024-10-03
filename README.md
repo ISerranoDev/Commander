@@ -55,6 +55,7 @@ Construye y ejecuta el contenedor con Docker Compose:
   Guarda la configuración si deseas, y luego haz clic en "Finish".
 - Lanza la aplicación con Makefile, lo cual actualizará de forma automática las variables windows.env para concuerden con tu ipv4 y así poder conectar la pantalla:
 
+      make os=windows update-display  
       make os=windows up
 
 ## Hacer build de la aplicación

@@ -8,7 +8,7 @@
 <body>
     <header class="container text-end pb-0">
         <input type="text" id="search-bar" placeholder="Search for a Host..." oninput="searchTerm(this.value)"/>
-        <button class="btn-sm" id="add-host-button" onclick="addHost()"><i class="si si-plus-square"></i> Add Host</button>
+        <button class="btn-sm btn-primary" id="add-host-button" onclick="addHost()"><i class="si si-plus-square"></i> Add Host</button>
     </header>
 
     <main class="container">
@@ -31,6 +31,7 @@
                             type="text"
                             name="name"
                             placeholder="Host name"
+                            required
                         />
                     </label>
                     <label>
@@ -39,6 +40,7 @@
                             type="text"
                             name="host"
                             placeholder="192.168.1.1"
+                            required
                         />
                     </label>
                     <label>
@@ -48,6 +50,7 @@
                                 name="port"
                                 placeholder="22"
                                 value="22"
+                                required
                         />
                     </label>
                     <label>
@@ -56,6 +59,7 @@
                                 type="text"
                                 name="user"
                                 placeholder="Username"
+                                required
                         />
                     </label>
                     <label>
@@ -64,6 +68,7 @@
                                 type="password"
                                 name="pass"
                                 placeholder="*******"
+                                required
                         />
                     </label>
                 </fieldset>
