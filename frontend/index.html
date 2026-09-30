@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>WailsCommander</title>
+</head>
+<body>
+
+    <!-- ===== Create / unlock vault ===== -->
+    <section id="unlock-screen" class="unlock" hidden>
+        <div class="drag-strip"></div>
+        <div class="unlock-card">
+            <div class="brand-mark"><i data-icon="terminal"></i></div>
+            <h1 id="unlock-title"></h1>
+            <p id="unlock-subtitle" class="muted"></p>
+
+            <form id="unlock-form" autocomplete="off">
+                <label class="field">
+                    <span data-i18n="unlock.password"></span>
+                    <input type="password" name="password" required/>
+                </label>
+                <label class="field" data-create-only>
+                    <span data-i18n="unlock.confirm"></span>
+                    <input type="password" name="confirm"/>
+                </label>
+                <label class="check" data-legacy-only>
+                    <input type="checkbox" name="importLegacy" checked/>
+                    <span>
+                        <span data-i18n="unlock.importLegacy"></span>
+                        <code id="legacy-path"></code>
+                    </span>
+                </label>
+                <p class="callout callout-warning" data-create-only>
+                    <i data-icon="alert"></i>
+                    <span data-i18n="unlock.noRecovery"></span>
+                </p>
+                <button type="submit" class="btn btn-primary btn-block btn-lg" id="unlock-submit"></button>
+            </form>
+        </div>
+
+        <label class="unlock-language">
+            <i data-icon="globe"></i>
+            <select class="language-select"></select>
+        </label>
+    </section>
+
+    <!-- ===== Unlocked app ===== -->
+    <div id="app-screen" class="shell" hidden>
+        <div class="tabbar">
+            <button class="tab tab-home active" id="tab-home">
+                <i data-icon="vault"></i>
+                <span data-i18n="tabs.vault"></span>
+            </button>
+            <div id="session-tabs" class="session-tabs"></div>
+        </div>
+
+        <div class="workspace">
+        <div id="home" class="home">
+        <nav class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-mark brand-mark-sm"><i data-icon="terminal"></i></div>
+                <span>WailsCommander</span>
+            </div>
+
+            <button class="nav-item" data-view="hosts">
+                <i data-icon="server"></i>
+                <span data-i18n="nav.hosts"></span>
+                <span class="nav-count" id="host-count"></span>
+            </button>
+            <button class="nav-item" data-view="settings">
+                <i data-icon="settings"></i>
+                <span data-i18n="nav.settings"></span>
+            </button>
+
+            <div class="sidebar-spacer"></div>
+
+            <button class="nav-item" id="lock-button">
+                <i data-icon="lock"></i>
+                <span data-i18n="nav.lock"></span>
+            </button>
+        </nav>
+
+        <main class="content">
+            <!-- Hosts -->
+            <section id="view-hosts" class="view">
+                <header class="view-header">
+                    <label class="search">
+                        <i data-icon="search"></i>
+                        <input type="search" id="search-bar" data-i18n-placeholder="hosts.search"/>
+                    </label>
+                    <button class="btn btn-primary" id="add-host-button">
+                        <i data-icon="plus"></i>
+                        <span data-i18n="hosts.new"></span>
+                    </button>
+                </header>
+
+                <div class="view-body">
+                    <h2 class="section-title" data-i18n="hosts.title"></h2>
+                    <div id="host-grid" class="host-grid"></div>
+
+                    <p id="no-results" class="muted" hidden></p>
+
+                    <div id="empty-state" class="empty" hidden>
+                        <div class="empty-icon"><i data-icon="server"></i></div>
+                        <h3 data-i18n="hosts.emptyTitle"></h3>
+                        <p class="muted" data-i18n="hosts.emptyText"></p>
+                        <button class="btn btn-primary" id="empty-add-host">
+                            <i data-icon="plus"></i>
+                            <span data-i18n="hosts.new"></span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings -->
+            <section id="view-settings" class="view" hidden>
+                <header class="view-header">
+                    <h1 class="view-title" data-i18n="settings.title"></h1>
+                </header>
+
+                <div class="view-body settings">
+                    <div class="settings-group">
+                        <h3 data-i18n="settings.general"></h3>
+                        <div class="setting-row">
+                            <div class="setting-icon"><i data-icon="globe"></i></div>
+                            <div class="setting-text">
+                                <strong data-i18n="settings.language"></strong>
+                                <small data-i18n="settings.languageHint"></small>
+                            </div>
+                            <select class="language-select" id="setting-language"></select>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3 data-i18n="settings.security"></h3>
+                        <div class="setting-row">
+                            <div class="setting-icon"><i data-icon="clock"></i></div>
+                            <div class="setting-text">
+                                <strong data-i18n="settings.autoLock"></strong>
+                                <small data-i18n="settings.autoLockHint"></small>
+                            </div>
+                            <select id="setting-autolock"></select>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-icon"><i data-icon="shield"></i></div>
+                            <div class="setting-text">
+                                <strong data-i18n="settings.masterPassword"></strong>
+                                <small data-i18n="settings.masterPasswordHint"></small>
+                            </div>
+                            <button class="btn btn-secondary" data-action="change-password" data-i18n="settings.change"></button>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3 data-i18n="settings.data"></h3>
+                        <div class="setting-row">
+                            <div class="setting-icon"><i data-icon="upload"></i></div>
+                            <div class="setting-text">
+                                <strong data-i18n="settings.export"></strong>
+                                <small data-i18n="settings.exportHint"></small>
+                            </div>
+                            <button class="btn btn-secondary" data-action="export" data-i18n="settings.exportButton"></button>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-icon"><i data-icon="download"></i></div>
+                            <div class="setting-text">
+                                <strong data-i18n="settings.import"></strong>
+                                <small data-i18n="settings.importHint"></small>
+                            </div>
+                            <button class="btn btn-secondary" data-action="import" data-i18n="settings.importButton"></button>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-icon"><i data-icon="folder"></i></div>
+                            <div class="setting-text">
+                                <strong data-i18n="settings.location"></strong>
+                                <small data-i18n="settings.locationHint"></small>
+                                <code id="setting-location"></code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Host editor -->
+        <aside id="host-panel" class="panel" aria-hidden="true">
+            <header class="panel-header">
+                <h2 id="panel-title"></h2>
+                <button type="button" class="btn-icon" id="close-panel"><i data-icon="x"></i></button>
+            </header>
+
+            <form id="host-form" class="panel-body" autocomplete="off">
+                <input type="hidden" name="id"/>
+
+                <div class="form-section">
+                    <h4 data-i18n="host.general"></h4>
+                    <label class="field">
+                        <span data-i18n="host.name"></span>
+                        <input type="text" name="name" data-i18n-placeholder="host.namePlaceholder" required/>
+                    </label>
+                    <div class="field-row">
+                        <label class="field grow">
+                            <span data-i18n="host.address"></span>
+                            <input type="text" name="address" data-i18n-placeholder="host.addressPlaceholder" required spellcheck="false"/>
+                        </label>
+                        <label class="field port">
+                            <span data-i18n="host.port"></span>
+                            <input type="number" name="port" min="1" max="65535" value="22" required/>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4 data-i18n="host.credentials"></h4>
+                    <label class="field">
+                        <span data-i18n="host.username"></span>
+                        <input type="text" name="username" data-i18n-placeholder="host.usernamePlaceholder" required spellcheck="false"/>
+                    </label>
+
+                    <div class="segmented" role="radiogroup">
+                        <label>
+                            <input type="radio" name="authMethod" value="password" checked/>
+                            <span><i data-icon="password"></i><span data-i18n="hosts.authPassword"></span></span>
+                        </label>
+                        <label>
+                            <input type="radio" name="authMethod" value="key"/>
+                            <span><i data-icon="key"></i><span data-i18n="hosts.authKey"></span></span>
+                        </label>
+                    </div>
+
+                    <div data-auth="password">
+                        <label class="field">
+                            <span data-i18n="host.password"></span>
+                            <span class="input-group">
+                                <input type="password" name="password"/>
+                                <button type="button" class="input-action" data-reveal="password"></button>
+                            </span>
+                        </label>
+                    </div>
+
+                    <div data-auth="key" hidden>
+                        <p class="callout">
+                            <i data-icon="info"></i>
+                            <span data-i18n="host.keyHelp"></span>
+                        </p>
+
+                        <div class="key-picker">
+                            <div class="key-picker-icon"><i data-icon="key"></i></div>
+                            <div class="key-picker-text">
+                                <strong id="key-name"></strong>
+                                <small id="key-detail"></small>
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-sm" id="pick-key"></button>
+                        </div>
+
+                        <details class="paste-key">
+                            <summary data-i18n="host.pasteKey"></summary>
+                            <textarea name="privateKey" rows="5" spellcheck="false" data-i18n-placeholder="host.pastePlaceholder"></textarea>
+                        </details>
+
+                        <label class="field">
+                            <span data-i18n="host.keyPassphrase"></span>
+                            <span class="input-group">
+                                <input type="password" name="keyPassphrase"/>
+                                <button type="button" class="input-action" data-reveal="keyPassphrase"></button>
+                            </span>
+                            <small class="hint" id="passphrase-hint"></small>
+                        </label>
+                    </div>
+                </div>
+            </form>
+
+            <footer class="panel-footer">
+                <button type="button" class="btn btn-ghost-danger" id="delete-host">
+                    <i data-icon="trash"></i>
+                    <span data-i18n="host.delete"></span>
+                </button>
+                <button type="button" class="btn btn-secondary" id="panel-connect">
+                    <i data-icon="terminal"></i>
+                    <span data-i18n="hosts.connect"></span>
+                </button>
+                <button type="submit" form="host-form" class="btn btn-primary" data-i18n="host.save"></button>
+            </footer>
+        </aside>
+        </div>
+
+        <div id="sessions"></div>
+        </div>
+    </div>
+
+    <!-- ===== SSH session pane (cloned per tab) ===== -->
+    <template id="session-template">
+        <div class="session">
+            <div class="terminal-host"></div>
+            <div class="connect-overlay" data-state="connecting">
+                <div class="connect-visual">
+                    <div class="node node-local"><i data-icon="laptop"></i></div>
+                    <div class="connect-line"><span></span><span></span><span></span><span></span></div>
+                    <div class="node node-remote">
+                        <span class="ring"></span>
+                        <span class="ring ring-2"></span>
+                        <span class="node-letter"></span>
+                    </div>
+                </div>
+                <h2 class="connect-title"></h2>
+                <p class="connect-target"></p>
+                <ol class="connect-steps">
+                    <li data-step="connecting"><span class="step-mark"></span><span data-i18n="session.steps.connecting"></span></li>
+                    <li data-step="verifying"><span class="step-mark"></span><span data-i18n="session.steps.verifying"></span></li>
+                    <li data-step="authenticating"><span class="step-mark"></span><span data-i18n="session.steps.authenticating"></span></li>
+                    <li data-step="shell"><span class="step-mark"></span><span data-i18n="session.steps.shell"></span></li>
+                </ol>
+                <div class="connect-error">
+                    <p class="connect-error-message"></p>
+                    <div class="connect-actions">
+                        <button type="button" class="btn btn-secondary" data-session-action="close" data-i18n="session.close"></button>
+                        <button type="button" class="btn btn-primary" data-session-action="retry">
+                            <i data-icon="refresh"></i>
+                            <span class="retry-label"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- ===== Shared modal ===== -->
+    <dialog id="modal" class="modal">
+        <form id="modal-form" autocomplete="off">
+            <h3 id="modal-title"></h3>
+            <p id="modal-message" class="muted"></p>
+            <div id="modal-fields"></div>
+            <footer>
+                <button type="button" class="btn btn-secondary" id="modal-cancel"></button>
+                <button type="submit" id="modal-ok"></button>
+            </footer>
+        </form>
+    </dialog>
+
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+
+    <script src="./src/main.js" type="module"></script>
+</body>
+</html>

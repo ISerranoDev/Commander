@@ -1,32 +1,38 @@
-# Levanta la arquitectura
+# Common tasks. Requires Go, Node and the Wails CLI
+# (go install github.com/wailsapp/wails/v2/cmd/wails@latest).
 
-file_selected := -f docker-compose.$(os).yml
+LINUX_IMAGE := golang:1.23-bookworm
 
-update-display:
-	# Define el comando para obtener la dirección IP
-	HOST_IP := $(shell powershell -Command "(ipconfig | Select-String 'IPv4' | Select-Object -First 1) -replace '.*: ', ''")
-	# Combina la IP con :0
-	DISPLAY := $(HOST_IP):0
-	@powershell -Command "(Get-Content windows.env) -replace 'DISPLAY=.*', 'DISPLAY=$(DISPLAY)' | Set-Content windows.env"
+.PHONY: dev test build build-macos build-windows build-linux build-linux-docker
 
-up:
-	@docker-compose $(file_selected) up -d
+dev:
+	wails dev
 
-ps:
-	@docker-compose $(file_selected) ps
+test:
+	go test ./...
 
-down:
-	@docker-compose $(file_selected) down
-
+# Build for the current OS.
 build:
-	@docker-compose $(file_selected) build $(c)
+	wails build
 
-restart:
-	@docker-compose $(file_selected) restart $(c)
+# Universal binary (Intel + Apple Silicon). Run on macOS.
+build-macos:
+	wails build -platform darwin/universal
 
-logs:
-	@docker-compose $(file_selected) logs -f $(c)
+# Cross-compiles from any OS (no CGO on Windows). Add -nsis for an installer
+# (needs makensis installed).
+build-windows:
+	wails build -platform windows/amd64
 
-connect:
-	@docker-compose $(file_selected) exec $(c) bash
+# Run on Linux with GTK 3 + WebKit2GTK 4.1 dev packages installed
+# (Ubuntu 22.04+, Debian 12+, Fedora 38+).
+build-linux:
+	wails build -tags webkit2_41
 
+# Linux build from macOS/Windows inside Docker. Output: build/bin/linux/.
+build-linux-docker:
+	cd frontend && npm install && npm run build
+	docker run --rm -v "$(CURDIR)":/src -w /src $(LINUX_IMAGE) bash -c '\
+		apt-get update -qq && \
+		apt-get install -y -qq libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config >/dev/null && \
+		go build -buildvcs=false -tags desktop,production,webkit2_41 -o build/bin/linux/wailscommander .'

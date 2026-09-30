@@ -1,2 +1,8 @@
 .idea
-windows.env
+.DS_Store
+docker/windows.env
+
+build/bin
+node_modules
+frontend/dist
+frontend/wailsjs
