@@ -1,0 +1,82 @@
+name: Release
+
+# Builds Windows, Linux and macOS binaries when a v* tag is pushed
+# (e.g. `git tag v0.1.0 && git push origin v0.1.0`) and attaches them
+# to a GitHub release. Can also be run manually from the Actions tab.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  WAILS_VERSION: v2.16.0
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows-amd64
+            args: -platform windows/amd64
+          - os: ubuntu-24.04
+            name: linux-amd64
+            args: -platform linux/amd64 -tags webkit2_41
+          - os: macos-latest
+            name: macos-universal
+            args: -platform darwin/universal
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Build
+        run: wails build -clean -trimpath ${{ matrix.args }}
+
+      - name: Package
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./wails.json').info.productVersion")
+          OUT="Commander-${VERSION}-${{ matrix.name }}"
+          cd build/bin
+          case "${{ runner.os }}" in
+            Windows) 7z a "../../${OUT}.zip" Commander.exe ;;
+            macOS)   ditto -c -k --keepParent Commander.app "../../${OUT}.zip" ;;
+            Linux)   tar -czf "../../${OUT}.tar.gz" Commander ;;
+          esac
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: Commander-*
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: Commander-*
+          generate_release_notes: true
