@@ -22,6 +22,7 @@ type App struct {
 	vault    *vault.Vault
 	settings *settings.Store
 	ssh      *sshclient.Manager
+	transfer transferState
 }
 
 func New(v *vault.Vault, s *settings.Store) *App {

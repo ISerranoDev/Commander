@@ -15,9 +15,9 @@ const STEPS = ['connecting', 'verifying', 'authenticating', 'shell'];
 const TERMINAL_THEME = {
     background: '#0d0e12',
     foreground: '#e7e8ee',
-    cursor: '#c9b1ff',
+    cursor: '#8fc0ff',
     cursorAccent: '#0d0e12',
-    selectionBackground: 'rgba(155, 108, 255, 0.35)',
+    selectionBackground: 'rgba(47, 123, 255, 0.35)',
     black: '#1a1c23', brightBlack: '#5d6173',
     red: '#f06273', brightRed: '#ff8a97',
     green: '#3fcf8e', brightGreen: '#6ee7b0',

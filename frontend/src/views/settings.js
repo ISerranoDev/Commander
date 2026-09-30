@@ -1,4 +1,4 @@
-import {ChangeMasterPassword, Export, Import} from '../../wailsjs/go/app/App';
+import {ChangeMasterPassword, ChooseExportFile, ChooseImportFile, ExportHosts, ImportHosts} from '../../wailsjs/go/app/App';
 import {LANGUAGES, t} from '../i18n';
 import {getSettings, updateSettings} from '../lib/settings';
 import {$, $$, notify, notifyError, openModal} from '../lib/ui';
@@ -8,31 +8,47 @@ const AUTO_LOCK_OPTIONS = [5, 15, 30, 60, 0];
 let onHostsChanged = async () => {};
 
 const actions = {
+    // Step 1: pick where to save (native dialog). Step 2: passphrase.
     async export() {
+        const file = await ChooseExportFile();
+        if (!file.name) return;
         const values = await openModal({
             title: t('dialog.exportTitle'),
-            message: t('dialog.exportMessage'),
+            message: t('dialog.exportMessage', {path: file.path}),
             fields: [
                 {name: 'passphrase', label: t('dialog.passphrase')},
                 {name: 'confirm', label: t('dialog.confirmPassphrase'), matches: 'passphrase'},
             ],
+            okLabel: t('dialog.exportButton'),
         });
         if (!values) return;
-        const path = await Export(values.passphrase);
-        if (path) notify(t('toast.exported', {path}));
+        const path = await ExportHosts(values.passphrase);
+        notify(t('toast.exported', {path}));
     },
 
+    // Step 1: pick the backup file (native dialog). Step 2: passphrase,
+    // asked again on a wrong one without choosing the file again.
     async import() {
-        const values = await openModal({
-            title: t('dialog.importTitle'),
-            message: t('dialog.importMessage'),
-            fields: [{name: 'passphrase', label: t('dialog.passphrase')}],
-        });
-        if (!values) return;
-        const count = await Import(values.passphrase);
-        if (count < 0) return;
-        notify(t('toast.imported', {count}));
-        await onHostsChanged();
+        const file = await ChooseImportFile();
+        if (!file.name) return;
+        for (;;) {
+            const values = await openModal({
+                title: t('dialog.importTitle'),
+                message: t('dialog.importMessage', {name: file.name, size: formatSize(file.size)}),
+                fields: [{name: 'passphrase', label: t('dialog.passphrase')}],
+                okLabel: t('dialog.importButton'),
+            });
+            if (!values) return;
+            try {
+                const count = await ImportHosts(values.passphrase);
+                notify(t('toast.imported', {count}));
+                await onHostsChanged();
+                return;
+            } catch (err) {
+                notifyError(err);
+                if (!String(err).includes('wrong password')) return;
+            }
+        }
     },
 
     async 'change-password'() {
@@ -49,6 +65,10 @@ const actions = {
         notify(t('toast.passwordChanged'));
     },
 };
+
+function formatSize(bytes) {
+    return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 /** Fills every language <select> (settings page and unlock screen). */
 function renderLanguageSelects() {

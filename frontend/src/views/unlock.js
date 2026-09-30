@@ -1,4 +1,5 @@
 import {CreateVault, DeleteLegacyFile, Unlock} from '../../wailsjs/go/app/App';
+import {BrowserOpenURL} from '../../wailsjs/runtime/runtime';
 import {t} from '../i18n';
 import {$, $$, confirmDanger, notify, notifyError} from '../lib/ui';
 
@@ -77,5 +78,10 @@ async function offerLegacyCleanup(imported, path) {
 
 export function initUnlock() {
     $('#unlock-form').addEventListener('submit', onSubmit);
+    // Open the author's page in the system browser, not inside the app.
+    $('#author-link').addEventListener('click', (event) => {
+        event.preventDefault();
+        BrowserOpenURL(event.currentTarget.href);
+    });
     document.addEventListener('i18n:change', render);
 }

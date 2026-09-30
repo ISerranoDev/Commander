@@ -18,10 +18,11 @@
     --text-muted: #8c90a3;
     --text-faint: #5d6173;
 
-    --accent: #9b6cff;
-    --accent-hover: #ab83ff;
-    --accent-soft: rgba(155, 108, 255, 0.14);
-    --accent-text: #c9b1ff;
+    /* Blue from the Commander logo. */
+    --accent: #2f7bff;
+    --accent-hover: #4b8fff;
+    --accent-soft: rgba(47, 123, 255, 0.15);
+    --accent-text: #8fc0ff;
 
     --danger: #f06273;
     --danger-soft: rgba(240, 98, 115, 0.12);
@@ -380,7 +381,7 @@ input:focus, textarea:focus, select:focus {
     align-items: center;
     justify-content: center;
     background:
-        radial-gradient(900px 500px at 50% -10%, rgba(155, 108, 255, 0.18), transparent 70%),
+        radial-gradient(900px 500px at 50% -10%, rgba(30, 144, 255, 0.2), transparent 70%),
         var(--bg);
 }
 
@@ -402,7 +403,7 @@ input:focus, textarea:focus, select:focus {
 }
 
 .unlock-card h1 {
-    margin: 18px 0 6px;
+    margin: 12px 0 6px;
     font-size: 21px;
     font-weight: 650;
 }
@@ -432,33 +433,59 @@ input:focus, textarea:focus, select:focus {
     background-color: transparent;
 }
 
-.brand-mark {
-    display: inline-flex;
+.brand-logo {
+    width: 76px;
+    height: 76px;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 24px rgba(30, 144, 255, 0.35));
+}
+
+.brand-logo-sm {
+    width: 30px;
+    height: 30px;
+    filter: none;
+}
+
+/* Author credit: bottom-left of the unlock screen, low-key until hovered. */
+.author-credit {
+    position: absolute;
+    left: 20px;
+    bottom: 18px;
+    display: flex;
     align-items: center;
-    justify-content: center;
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #b18bff, #7445e6);
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(124, 77, 230, 0.4);
+    gap: 9px;
+    color: var(--text-muted);
+    text-decoration: none;
+    opacity: 0.55;
+    transition: opacity 0.2s;
 }
 
-.brand-mark .icon {
-    width: 26px;
-    height: 26px;
+.author-credit:hover {
+    opacity: 1;
 }
 
-.brand-mark-sm {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    box-shadow: none;
+.author-credit img {
+    width: 30px;
+    height: 30px;
+    padding: 2px;
+    border-radius: 50%;
+    background: #e6f3f7;
 }
 
-.brand-mark-sm .icon {
-    width: 15px;
-    height: 15px;
+.author-credit span {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.author-credit small {
+    font-size: 10.5px;
+    color: var(--text-faint);
+}
+
+.author-credit strong {
+    font-size: 12px;
+    font-weight: 600;
 }
 
 /* ==========================================================================

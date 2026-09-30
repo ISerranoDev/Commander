@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>WailsCommander</title>
+    <title>Commander</title>
 </head>
 <body>
 
@@ -11,7 +11,7 @@
     <section id="unlock-screen" class="unlock" hidden>
         <div class="drag-strip"></div>
         <div class="unlock-card">
-            <div class="brand-mark"><i data-icon="terminal"></i></div>
+            <img class="brand-logo" src="./src/assets/logo.png" alt="Commander"/>
             <h1 id="unlock-title"></h1>
             <p id="unlock-subtitle" class="muted"></p>
 
@@ -39,6 +39,14 @@
             </form>
         </div>
 
+        <a href="https://github.com/ISerranoDev" class="author-credit" id="author-link">
+            <img src="./src/assets/author.png" alt=""/>
+            <span>
+                <small data-i18n="unlock.madeBy"></small>
+                <strong>ISerranoDev</strong>
+            </span>
+        </a>
+
         <label class="unlock-language">
             <i data-icon="globe"></i>
             <select class="language-select"></select>
@@ -59,8 +67,8 @@
         <div id="home" class="home">
         <nav class="sidebar">
             <div class="sidebar-brand">
-                <div class="brand-mark brand-mark-sm"><i data-icon="terminal"></i></div>
-                <span>WailsCommander</span>
+                <img class="brand-logo brand-logo-sm" src="./src/assets/logo.png" alt=""/>
+                <span>Commander</span>
             </div>
 
             <button class="nav-item" data-view="hosts">

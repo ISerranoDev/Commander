@@ -35,4 +35,4 @@ build-linux-docker:
 	docker run --rm -v "$(CURDIR)":/src -w /src $(LINUX_IMAGE) bash -c '\
 		apt-get update -qq && \
 		apt-get install -y -qq libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config >/dev/null && \
-		go build -buildvcs=false -tags desktop,production,webkit2_41 -o build/bin/linux/wailscommander .'
+		go build -buildvcs=false -tags desktop,production,webkit2_41 -o build/bin/linux/commander .'

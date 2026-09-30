@@ -1,4 +1,6 @@
-# WailsCommander
+<p align="center"><img src="logos/logo.png" width="128" alt="Commander"/></p>
+
+# Commander
 
 Open-source SSH host manager, an alternative to Termius. Built with [Wails](https://wails.io) (Go + web UI).
 
@@ -27,22 +29,33 @@ All hosts and credentials are stored **locally**, in a single encrypted file. No
   a warning. Hosts already trusted in `~/.ssh/known_hosts` are accepted
   without asking (that file is only read, never modified).
 
+Existing data in the old `WailsCommander` folder is moved to `Commander`
+automatically on first run.
+
 Non-secret preferences (language, auto-lock) live in `settings.json` next to
 the vault, because the language is needed before unlocking.
 
-Vault location (override with `WAILSCOMMANDER_DATA_DIR`):
+Vault location (override with `COMMANDER_DATA_DIR`):
 
 | OS      | Path                                              |
 |---------|---------------------------------------------------|
-| macOS   | `~/Library/Application Support/WailsCommander/store.dat` |
-| Windows | `%AppData%\WailsCommander\store.dat`              |
-| Linux   | `~/.config/WailsCommander/store.dat`              |
+| macOS   | `~/Library/Application Support/Commander/store.dat` |
+| Windows | `%AppData%\Commander\store.dat`              |
+| Linux   | `~/.config/Commander/store.dat`              |
 
 ### Export / import
 
-From the settings menu you can export all hosts to a file encrypted with a
-**separate passphrase** (same format as the vault). Importing merges hosts:
-entries with the same ID are replaced, new ones are added.
+In **Settings → Data**:
+
+- **Export**: a native "Save as" dialog asks where to save the backup
+  (`.commander`), then a passphrase to encrypt it (independent of the master
+  password; same opaque format as the vault).
+- **Import**: a native "Open" dialog asks for the backup file, then its
+  passphrase (asked again if wrong). Hosts are merged: entries with the same
+  ID are replaced, new ones are added.
+
+The chosen path is kept in Go; the UI cannot make the app read or write
+arbitrary paths.
 
 ### Migrating from older versions
 
@@ -99,7 +112,7 @@ On Linux distros that still ship WebKit2GTK 4.0 only, drop `-tags webkit2_41`.
 Use a throwaway vault while developing:
 
 ```sh
-WAILSCOMMANDER_DATA_DIR=/tmp/wc-dev wails dev
+COMMANDER_DATA_DIR=/tmp/commander-dev wails dev
 ```
 
 The older Docker/X11 setup (running the GUI inside a container) is in
@@ -135,3 +148,7 @@ titles in `internal/app/transfer.go`).
 - Jump hosts, port forwarding, ssh-agent support
 - Groups / tags
 - SFTP
+
+## Author
+
+Developed by [ISerranoDev](https://github.com/ISerranoDev).

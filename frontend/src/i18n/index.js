@@ -67,6 +67,7 @@ const backendErrors = {
     'authentication failed': 'authFailed',
     'connection timed out': 'timeout',
     'session not found': 'sessionNotFound',
+    'no file chosen': 'noFileChosen',
 };
 
 // Network errors carry addresses in the message; match them by fragment.
