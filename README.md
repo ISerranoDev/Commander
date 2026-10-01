@@ -146,9 +146,23 @@ titles in `internal/app/transfer.go`).
 
 - Split panes, snippets
 - Jump hosts, port forwarding, ssh-agent support
-- Groups / tags
+- Tags
 - SFTP
 
 ## Author
 
 Developed by [ISerranoDev](https://github.com/ISerranoDev).
+
+## License
+
+Commander is source-available under the
+[PolyForm Noncommercial License 1.0.0](LICENSE.md).
+
+You may use, study, modify and share it for free for any **noncommercial**
+purpose (personal use, research, education, charities, public institutions…).
+Copies and derived works must keep the license and the copyright notice.
+
+**Commercial use** (selling it, bundling it in a paid product or service, or
+using it to make money) requires prior written permission from the author.
+To ask for a commercial license, contact
+[ISerranoDev](https://github.com/ISerranoDev).
