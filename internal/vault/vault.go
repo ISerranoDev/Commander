@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,23 +25,28 @@ import (
 const MinPasswordLength = 8
 
 var (
-	ErrLocked       = errors.New("vault is locked")
-	ErrExists       = errors.New("vault already exists")
-	ErrNotExists    = errors.New("vault does not exist")
-	ErrNotFound     = errors.New("host not found")
-	ErrWeakPassword = fmt.Errorf("password must be at least %d characters", MinPasswordLength)
+	ErrLocked        = errors.New("vault is locked")
+	ErrExists        = errors.New("vault already exists")
+	ErrNotExists     = errors.New("vault does not exist")
+	ErrNotFound      = errors.New("host not found")
+	ErrGroupNotFound = errors.New("group not found")
+	ErrWeakPassword  = fmt.Errorf("password must be at least %d characters", MinPasswordLength)
 )
 
 // data is the plaintext document stored inside the encrypted file.
 type data struct {
 	Version int          `json:"v"`
 	Hosts   []model.Host `json:"hosts"`
+	// Groups are listed in display order; hosts are too (within and
+	// across groups). Absent in files written before groups existed.
+	Groups []model.Group `json:"groups,omitempty"`
 	// KnownHosts maps "host:port" to the trusted server key in
 	// authorized_keys format ("ssh-ed25519 AAAA...").
 	KnownHosts map[string]string `json:"knownHosts,omitempty"`
 }
 
-const dataVersion = 1
+// Version 2 added groups and made the stored host order the display order.
+const dataVersion = 2
 
 type Vault struct {
 	path string
@@ -83,7 +89,7 @@ func (v *Vault) Create(password string, initial []model.Host) error {
 	if err != nil {
 		return err
 	}
-	d := &data{Version: dataVersion, Hosts: []model.Host{}, KnownHosts: map[string]string{}}
+	d := &data{Version: dataVersion, Hosts: []model.Host{}, Groups: []model.Group{}, KnownHosts: map[string]string{}}
 	for _, h := range initial {
 		d.Hosts = append(d.Hosts, prepareNew(h))
 	}
@@ -190,6 +196,10 @@ func (v *Vault) PutHost(h model.Host) (model.Host, error) {
 		return model.Host{}, ErrLocked
 	}
 
+	if h.GroupID != "" && v.groupIndex(h.GroupID) < 0 {
+		return model.Host{}, ErrGroupNotFound
+	}
+
 	next := slices.Clone(v.data.Hosts)
 	if h.ID == "" {
 		h = prepareNew(h)
@@ -201,9 +211,14 @@ func (v *Vault) PutHost(h model.Host) (model.Host, error) {
 		}
 		h.CreatedAt = next[i].CreatedAt
 		h.UpdatedAt = time.Now().UTC()
-		next[i] = h
+		if next[i].GroupID == h.GroupID {
+			next[i] = h
+		} else {
+			// Moving to another group puts the host last in it.
+			next = append(slices.Delete(next, i, i+1), h)
+		}
 	}
-	if err := v.commit(next); err != nil {
+	if err := v.commit(next, v.data.Groups); err != nil {
 		return model.Host{}, err
 	}
 	return h, nil
@@ -219,10 +234,133 @@ func (v *Vault) DeleteHost(id string) error {
 	if i < 0 {
 		return ErrNotFound
 	}
-	return v.commit(slices.Delete(slices.Clone(v.data.Hosts), i, i+1))
+	return v.commit(slices.Delete(slices.Clone(v.data.Hosts), i, i+1), v.data.Groups)
 }
 
-// Export writes every host to path, encrypted with passphrase (independent
+func (v *Vault) Groups() ([]model.Group, error) {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	if v.key == nil {
+		return nil, ErrLocked
+	}
+	return append([]model.Group{}, v.data.Groups...), nil
+}
+
+// PutGroup creates g when its ID is empty (appended last), otherwise
+// renames the existing group with that ID.
+func (v *Vault) PutGroup(g model.Group) (model.Group, error) {
+	g.Normalize()
+	if err := g.Validate(); err != nil {
+		return model.Group{}, err
+	}
+
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if v.key == nil {
+		return model.Group{}, ErrLocked
+	}
+
+	next := slices.Clone(v.data.Groups)
+	if g.ID == "" {
+		g.ID = uuid.NewString()
+		next = append(next, g)
+	} else {
+		i := v.groupIndex(g.ID)
+		if i < 0 {
+			return model.Group{}, ErrGroupNotFound
+		}
+		next[i] = g
+	}
+	if err := v.commit(v.data.Hosts, next); err != nil {
+		return model.Group{}, err
+	}
+	return g, nil
+}
+
+// DeleteGroup removes the group; its hosts are kept, outside any group.
+func (v *Vault) DeleteGroup(id string) error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if v.key == nil {
+		return ErrLocked
+	}
+	i := v.groupIndex(id)
+	if i < 0 {
+		return ErrGroupNotFound
+	}
+	hosts := slices.Clone(v.data.Hosts)
+	for j := range hosts {
+		if hosts[j].GroupID == id {
+			hosts[j].GroupID = ""
+		}
+	}
+	return v.commit(hosts, slices.Delete(slices.Clone(v.data.Groups), i, i+1))
+}
+
+// ReorderGroups sets the group order. Unknown IDs are ignored and groups
+// missing from ids keep their relative order after the listed ones.
+func (v *Vault) ReorderGroups(ids []string) error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if v.key == nil {
+		return ErrLocked
+	}
+	next := make([]model.Group, 0, len(v.data.Groups))
+	seen := map[string]bool{}
+	for _, id := range ids {
+		if i := v.groupIndex(id); i >= 0 && !seen[id] {
+			seen[id] = true
+			next = append(next, v.data.Groups[i])
+		}
+	}
+	for _, g := range v.data.Groups {
+		if !seen[g.ID] {
+			next = append(next, g)
+		}
+	}
+	return v.commit(v.data.Hosts, next)
+}
+
+// Placement puts a host in a group ("" for none) at its position in the
+// list passed to ArrangeHosts.
+type Placement struct {
+	ID      string `json:"id"`
+	GroupID string `json:"groupId"`
+}
+
+// ArrangeHosts sets the host order and group membership. Unknown host IDs
+// are ignored, unknown group IDs mean no group, and hosts missing from
+// layout keep their relative order after the listed ones.
+func (v *Vault) ArrangeHosts(layout []Placement) error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if v.key == nil {
+		return ErrLocked
+	}
+	next := make([]model.Host, 0, len(v.data.Hosts))
+	seen := map[string]bool{}
+	for _, p := range layout {
+		i := v.indexOf(p.ID)
+		if i < 0 || seen[p.ID] {
+			continue
+		}
+		seen[p.ID] = true
+		h := v.data.Hosts[i]
+		h.GroupID = ""
+		if v.groupIndex(p.GroupID) >= 0 {
+			h.GroupID = p.GroupID
+		}
+		next = append(next, h)
+	}
+	for _, h := range v.data.Hosts {
+		if !seen[h.ID] {
+			next = append(next, h)
+		}
+	}
+	return v.commit(next, v.data.Groups)
+}
+
+// Export writes every host and group to path, encrypted with passphrase (independent
 // of the master password) using the same opaque format as the vault.
 func (v *Vault) Export(path, passphrase string) error {
 	if len(passphrase) < MinPasswordLength {
@@ -241,8 +379,10 @@ func (v *Vault) Export(path, passphrase string) error {
 	return writeEncrypted(path, key, v.data)
 }
 
-// Import merges hosts from an export file. Hosts whose ID already exists are
-// replaced; the rest are added. It returns how many hosts were imported.
+// Import merges hosts and groups from an export file. Hosts and groups whose
+// ID already exists are replaced; the rest are added. Files written before
+// groups existed import as ungrouped hosts. It returns how many hosts were
+// imported.
 func (v *Vault) Import(path, passphrase string) (int, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -259,12 +399,29 @@ func (v *Vault) Import(path, passphrase string) (int, error) {
 	if v.key == nil {
 		return 0, ErrLocked
 	}
+	groups := slices.Clone(v.data.Groups)
+	for _, g := range in.Groups {
+		g.Normalize()
+		if g.ID == "" || g.Validate() != nil {
+			continue
+		}
+		if i := slices.IndexFunc(groups, func(x model.Group) bool { return x.ID == g.ID }); i >= 0 {
+			groups[i] = g
+			continue
+		}
+		groups = append(groups, g)
+	}
+	known := groupIDs(groups)
+
 	next := slices.Clone(v.data.Hosts)
 	imported := 0
 	for _, h := range in.Hosts {
 		h.Normalize()
 		if h.Validate() != nil {
 			continue
+		}
+		if !known[h.GroupID] {
+			h.GroupID = ""
 		}
 		imported++
 		if i := slices.IndexFunc(next, func(x model.Host) bool { return h.ID != "" && x.ID == h.ID }); i >= 0 {
@@ -276,16 +433,16 @@ func (v *Vault) Import(path, passphrase string) (int, error) {
 		}
 		next = append(next, h)
 	}
-	if err := v.commit(next); err != nil {
+	if err := v.commit(next, groups); err != nil {
 		return 0, err
 	}
 	return imported, nil
 }
 
-// commit persists hosts and only then swaps them into memory, so a failed
-// write never leaves memory and disk out of sync. Caller holds v.mu.
-func (v *Vault) commit(hosts []model.Host) error {
-	return v.commitData(&data{Version: dataVersion, Hosts: hosts, KnownHosts: v.data.KnownHosts})
+// commit persists hosts and groups and only then swaps them into memory, so
+// a failed write never leaves memory and disk out of sync. Caller holds v.mu.
+func (v *Vault) commit(hosts []model.Host, groups []model.Group) error {
+	return v.commitData(&data{Version: dataVersion, Hosts: hosts, Groups: groups, KnownHosts: v.data.KnownHosts})
 }
 
 func (v *Vault) commitData(d *data) error {
@@ -320,11 +477,24 @@ func (v *Vault) TrustHost(hostport, key string) error {
 		known = map[string]string{}
 	}
 	known[hostport] = key
-	return v.commitData(&data{Version: dataVersion, Hosts: v.data.Hosts, KnownHosts: known})
+	return v.commitData(&data{Version: dataVersion, Hosts: v.data.Hosts, Groups: v.data.Groups, KnownHosts: known})
 }
 
 func (v *Vault) indexOf(id string) int {
 	return slices.IndexFunc(v.data.Hosts, func(h model.Host) bool { return h.ID == id })
+}
+
+func (v *Vault) groupIndex(id string) int {
+	return slices.IndexFunc(v.data.Groups, func(g model.Group) bool { return g.ID == id })
+}
+
+// groupIDs is the set of valid GroupID values, including "" (no group).
+func groupIDs(groups []model.Group) map[string]bool {
+	ids := map[string]bool{"": true}
+	for _, g := range groups {
+		ids[g.ID] = true
+	}
+	return ids
 }
 
 func prepareNew(h model.Host) model.Host {
@@ -346,10 +516,33 @@ func decode(password, raw []byte) (*data, *sealed, error) {
 		key.wipe()
 		return nil, nil, ErrDecrypt
 	}
+	upgrade(&d)
+	return &d, key, nil
+}
+
+// upgrade brings a decoded document (vault or export, any version) to the
+// current shape in memory. It is saved in that shape on the next change.
+func upgrade(d *data) {
 	if d.Hosts == nil {
 		d.Hosts = []model.Host{}
 	}
-	return &d, key, nil
+	// Vaults and exports from before groups have none; the UI needs [] not null.
+	if d.Groups == nil {
+		d.Groups = []model.Group{}
+	}
+	if d.Version < 2 {
+		// The UI used to sort hosts by name; keep that order now that the
+		// stored order is the one shown.
+		slices.SortStableFunc(d.Hosts, func(a, b model.Host) int {
+			return strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
+		})
+	}
+	known := groupIDs(d.Groups)
+	for i := range d.Hosts {
+		if !known[d.Hosts[i].GroupID] {
+			d.Hosts[i].GroupID = ""
+		}
+	}
 }
 
 // writeEncrypted atomically replaces path: write to a temp file in the same

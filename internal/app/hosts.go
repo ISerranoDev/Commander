@@ -8,6 +8,7 @@ import (
 
 	"github.com/ISerranoDev/WailsCommander/internal/model"
 	"github.com/ISerranoDev/WailsCommander/internal/sshkey"
+	"github.com/ISerranoDev/WailsCommander/internal/vault"
 )
 
 // HostSummary is what the UI gets: no secrets, only whether they are set.
@@ -18,6 +19,7 @@ type HostSummary struct {
 	Port             int    `json:"port"`
 	Username         string `json:"username"`
 	AuthMethod       string `json:"authMethod"`
+	GroupID          string `json:"groupId"`
 	HasPassword      bool   `json:"hasPassword"`
 	HasPrivateKey    bool   `json:"hasPrivateKey"`
 	HasKeyPassphrase bool   `json:"hasKeyPassphrase"`
@@ -31,12 +33,14 @@ func summarize(h model.Host) HostSummary {
 		Port:             h.Port,
 		Username:         h.Username,
 		AuthMethod:       h.AuthMethod,
+		GroupID:          h.GroupID,
 		HasPassword:      h.Password != "",
 		HasPrivateKey:    h.PrivateKey != "",
 		HasKeyPassphrase: h.KeyPassphrase != "",
 	}
 }
 
+// ListHosts returns the hosts in display order.
 func (a *App) ListHosts() ([]HostSummary, error) {
 	hosts, err := a.vault.Hosts()
 	if err != nil {
@@ -66,6 +70,7 @@ type HostInput struct {
 	Port          int    `json:"port"`
 	Username      string `json:"username"`
 	AuthMethod    string `json:"authMethod"`
+	GroupID       string `json:"groupId"`
 	Password      string `json:"password"`
 	PrivateKey    string `json:"privateKey"`
 	KeyPassphrase string `json:"keyPassphrase"`
@@ -79,6 +84,7 @@ func (a *App) SaveHost(in HostInput) (HostSummary, error) {
 		Port:          in.Port,
 		Username:      in.Username,
 		AuthMethod:    in.AuthMethod,
+		GroupID:       in.GroupID,
 		Password:      in.Password,
 		PrivateKey:    in.PrivateKey,
 		KeyPassphrase: in.KeyPassphrase,
@@ -114,6 +120,30 @@ func (a *App) SaveHost(in HostInput) (HostSummary, error) {
 
 func (a *App) DeleteHost(id string) error {
 	return a.vault.DeleteHost(id)
+}
+
+// ListGroups returns the groups in display order.
+func (a *App) ListGroups() ([]model.Group, error) {
+	return a.vault.Groups()
+}
+
+// SaveGroup creates a group (empty ID) or renames an existing one.
+func (a *App) SaveGroup(g model.Group) (model.Group, error) {
+	return a.vault.PutGroup(g)
+}
+
+// DeleteGroup removes a group, keeping its hosts outside any group.
+func (a *App) DeleteGroup(id string) error {
+	return a.vault.DeleteGroup(id)
+}
+
+func (a *App) ReorderGroups(ids []string) error {
+	return a.vault.ReorderGroups(ids)
+}
+
+// ArrangeHosts saves the host order and group membership after a drag.
+func (a *App) ArrangeHosts(layout []vault.Placement) error {
+	return a.vault.ArrangeHosts(layout)
 }
 
 // KeyFile is a private key the user picked from disk. Name is empty when

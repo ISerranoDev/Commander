@@ -1,22 +1,39 @@
-import {DeleteHost, GetHost, ListHosts, ReadKeyFile, RevealSecret, SaveHost} from '../../wailsjs/go/app/App';
+import {
+    ArrangeHosts,
+    DeleteGroup,
+    DeleteHost,
+    GetHost,
+    ListGroups,
+    ListHosts,
+    ReadKeyFile,
+    ReorderGroups,
+    RevealSecret,
+    SaveGroup,
+    SaveHost,
+} from '../../wailsjs/go/app/App';
 import {t} from '../i18n';
 import {hueFor} from '../lib/color';
 import {icon} from '../lib/icons';
-import {$, $$, confirmDanger, notify, notifyError} from '../lib/ui';
+import {$, $$, confirmDanger, notify, notifyError, openModal} from '../lib/ui';
 import {connectTo} from './sessions';
 
 let hosts = [];
+let groups = [];
 // Host being edited (HostSummary) or null for a new one.
 let editing = null;
 // Private key chosen with the file picker in this form session.
 let pickedKey = null;
+// Item being dragged: {type: 'host' | 'group', el, dropped}.
+let drag = null;
 
 // ---- List -----------------------------------------------------------------
 
+// Hosts and groups come in display order; dragging changes it.
 export async function loadHosts() {
     try {
-        hosts = await ListHosts();
-        hosts.sort((a, b) => a.name.localeCompare(b.name));
+        const [h, g] = await Promise.all([ListHosts(), ListGroups()]);
+        hosts = h ?? [];
+        groups = g ?? [];
         renderList();
     } catch (err) {
         notifyError(err);
@@ -25,30 +42,253 @@ export async function loadHosts() {
 
 export function clearHosts() {
     hosts = [];
-    $('#host-grid').replaceChildren();
+    groups = [];
+    $('#host-groups').replaceChildren();
     closePanel();
 }
 
 function renderList() {
+    if (drag) return; // a reload mid-drag would drop the dragged element
     const term = $('#search-bar').value.trim();
     const needle = term.toLowerCase();
+    const searching = needle !== '';
     const visible = hosts.filter((h) =>
         [h.name, h.address, h.username].some((v) => v.toLowerCase().includes(needle)),
     );
 
     $('#host-count').textContent = hosts.length || '';
-    $('#empty-state').hidden = hosts.length > 0;
-    $('.section-title').hidden = hosts.length === 0;
-    $('#no-results').hidden = !(hosts.length && !visible.length);
+    $('#empty-state').hidden = hosts.length > 0 || groups.length > 0;
+    $('#no-results').hidden = !(searching && hosts.length && !visible.length);
     $('#no-results').textContent = t('hosts.noResults', {term});
-    $('#host-grid').replaceChildren(...visible.map(hostCard));
+
+    // Each group in order, then the ungrouped hosts (also those whose group is gone).
+    const sections = [];
+    for (const group of groups) {
+        const members = visible.filter((h) => h.groupId === group.id);
+        if (searching && !members.length) continue;
+        sections.push(hostSection(group, members, searching));
+    }
+    const known = new Set(groups.map((g) => g.id));
+    const ungrouped = visible.filter((h) => !known.has(h.groupId));
+    if (ungrouped.length) {
+        sections.push(hostSection(null, ungrouped, searching));
+    } else if (!searching && groups.length) {
+        // Hidden drop target so hosts can be dragged out of every group.
+        sections.push(hostSection(null, [], searching));
+    }
+    $('#host-groups').replaceChildren(...sections);
+}
+
+// One full-width row per group; `group` is null for the ungrouped hosts.
+function hostSection(group, members, searching) {
+    const section = document.createElement('section');
+    section.className = 'host-section';
+    section.dataset.groupId = group?.id ?? '';
+    if (!group && !members.length) section.classList.add('drop-only');
+
+    const header = document.createElement('header');
+    header.className = 'section-header';
+    const title = document.createElement('h2');
+    title.className = 'section-title';
+    title.textContent = group ? group.name : t(groups.length ? 'groups.ungrouped' : 'hosts.title');
+    header.append(title);
+
+    if (group) {
+        section.classList.add('is-group');
+        const count = document.createElement('span');
+        count.className = 'section-count';
+        count.textContent = members.length || '';
+
+        const actions = document.createElement('div');
+        actions.className = 'section-actions';
+        actions.append(
+            iconButton('plus', t('groups.addHost'), () => openPanel(null, group.id)),
+            iconButton('pencil', t('groups.rename'), () => renameGroup(group)),
+            iconButton('trash', t('groups.delete'), () => deleteGroup(group)),
+        );
+        header.append(count, actions);
+
+        if (!searching) {
+            const grip = icon('grip', 'section-grip');
+            grip.title = t('groups.drag');
+            header.prepend(grip);
+            header.draggable = true;
+            header.addEventListener('dragstart', (e) => startDrag(e, 'group', section));
+            header.addEventListener('dragend', endDrag);
+        }
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'host-grid';
+    grid.dataset.empty = t('groups.dropHere');
+    grid.append(...members.map((h) => hostCard(h, !searching)));
+
+    section.append(header, grid);
+    return section;
+}
+
+function iconButton(name, title, onClick) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn-icon';
+    button.title = title;
+    button.append(icon(name));
+    button.addEventListener('click', onClick);
+    return button;
+}
+
+// ---- Drag and drop --------------------------------------------------------
+//
+// The dragged element is moved live in the DOM while hovering; on drop the
+// DOM order is saved. A cancelled drag re-renders from the saved state.
+
+const DRAG_TYPE = 'application/x-commander-item';
+
+function startDrag(event, type, el) {
+    event.stopPropagation();
+    drag = {type, el, dropped: false};
+    event.dataTransfer.effectAllowed = 'move';
+    // Custom type so text fields don't accept the drop.
+    event.dataTransfer.setData(DRAG_TYPE, type);
+    // Deferred so the drag image is taken before the element is dimmed.
+    requestAnimationFrame(() => {
+        if (drag?.el !== el) return;
+        el.classList.add('dragging');
+        $('#host-groups').classList.add(`dragging-${type}`);
+    });
+}
+
+function onDragOver(event) {
+    if (!drag) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    if (drag.type === 'host') moveHost(event);
+    else moveGroup(event);
+}
+
+function moveHost(event) {
+    const section = event.target.closest?.('.host-section');
+    if (!section) return;
+    const grid = $('.host-grid', section);
+    const before = [...grid.children].find((card) => {
+        if (card === drag.el) return false;
+        const r = card.getBoundingClientRect();
+        // Cards flow in rows: anything in a lower row, or left half of this row.
+        return event.clientY < r.top || (event.clientY <= r.bottom && event.clientX < r.left + r.width / 2);
+    });
+    if (before) {
+        if (before.previousElementSibling !== drag.el) grid.insertBefore(drag.el, before);
+    } else if (grid.lastElementChild !== drag.el) {
+        grid.append(drag.el);
+    }
+}
+
+// Groups stay above the ungrouped section, which is always last.
+function moveGroup(event) {
+    const container = $('#host-groups');
+    const others = $$('.host-section.is-group', container).filter((s) => s !== drag.el);
+    const before = others.find((s) => {
+        const r = s.getBoundingClientRect();
+        return event.clientY < r.top + r.height / 2;
+    }) ?? $('.host-section:not(.is-group)', container);
+    if (before) {
+        if (before.previousElementSibling !== drag.el) container.insertBefore(drag.el, before);
+    } else if (container.lastElementChild !== drag.el) {
+        container.append(drag.el);
+    }
+}
+
+function onDrop(event) {
+    if (!drag) return;
+    event.preventDefault();
+    drag.dropped = true;
+}
+
+async function endDrag() {
+    const current = drag;
+    if (!current) return;
+    drag = null;
+    current.el.classList.remove('dragging');
+    $('#host-groups').classList.remove('dragging-host', 'dragging-group');
+    if (!current.dropped) {
+        renderList();
+        return;
+    }
+    try {
+        if (current.type === 'host') {
+            const layout = $$('.host-card', $('#host-groups')).map((card) => ({
+                id: card.dataset.id,
+                groupId: card.closest('.host-section').dataset.groupId,
+            }));
+            await ArrangeHosts(layout);
+        } else {
+            await ReorderGroups($$('.host-section.is-group').map((s) => s.dataset.groupId));
+        }
+    } catch (err) {
+        notifyError(err);
+    }
+    await loadHosts();
+}
+
+// ---- Groups ---------------------------------------------------------------
+
+async function askGroupName(title, okLabel, value = '') {
+    const values = await openModal({
+        title,
+        okLabel,
+        fields: [{name: 'name', label: t('groups.name'), type: 'text', value}],
+    });
+    return values?.name.trim() || null;
+}
+
+async function createGroup() {
+    const name = await askGroupName(t('groups.newTitle'), t('groups.create'));
+    if (!name) return;
+    try {
+        await SaveGroup({id: '', name});
+        notify(t('groups.saved'));
+        await loadHosts();
+        $$('.host-section.is-group').at(-1)?.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+    } catch (err) {
+        notifyError(err);
+    }
+}
+
+async function renameGroup(group) {
+    const name = await askGroupName(t('groups.renameTitle'), t('groups.rename'), group.name);
+    if (!name || name === group.name) return;
+    try {
+        await SaveGroup({id: group.id, name});
+        notify(t('groups.saved'));
+        await loadHosts();
+    } catch (err) {
+        notifyError(err);
+    }
+}
+
+async function deleteGroup(group) {
+    const ok = await confirmDanger(t('groups.deleteTitle'), t('groups.deleteMessage', {name: group.name}), t('groups.deleteOk'));
+    if (!ok) return;
+    try {
+        await DeleteGroup(group.id);
+        notify(t('groups.deleted'));
+        await loadHosts();
+    } catch (err) {
+        notifyError(err);
+    }
 }
 
 // Built with DOM APIs (not innerHTML) so host names can't inject markup.
-// Clicking a card connects; the pencil opens the editor.
-function hostCard(host) {
+// Clicking a card connects; the pencil opens the editor; dragging moves it.
+function hostCard(host, draggable) {
     const card = document.createElement('div');
     card.className = 'host-card';
+    card.dataset.id = host.id;
+    if (draggable) {
+        card.draggable = true;
+        card.addEventListener('dragstart', (e) => startDrag(e, 'host', card));
+        card.addEventListener('dragend', endDrag);
+    }
     card.tabIndex = 0;
     card.setAttribute('role', 'button');
     card.title = t('hosts.connect');
@@ -105,12 +345,14 @@ function authBadge(host) {
 const form = () => $('#host-form');
 const authMethod = () => form().elements.authMethod.value;
 
-function openPanel(host = null) {
+// groupId preselects the group of a new host.
+function openPanel(host = null, groupId = '') {
     editing = host;
     pickedKey = null;
     const f = form();
     f.reset();
     f.elements.id.value = host?.id ?? '';
+    fillGroupSelect(host ? host.groupId : groupId);
     if (host) {
         for (const field of ['name', 'address', 'port', 'username']) f.elements[field].value = host[field];
         f.elements.authMethod.value = host.authMethod;
@@ -126,6 +368,18 @@ function openPanel(host = null) {
     $('#host-panel').setAttribute('aria-hidden', 'false');
     renderList();
     f.elements.name.focus({preventScroll: true});
+}
+
+function fillGroupSelect(selected) {
+    const select = form().elements.groupId;
+    const option = (value, label) => {
+        const el = document.createElement('option');
+        el.value = value;
+        el.textContent = label;
+        return el;
+    };
+    select.replaceChildren(option('', t('groups.none')), ...groups.map((g) => option(g.id, g.name)));
+    select.value = groups.some((g) => g.id === selected) ? selected : '';
 }
 
 function closePanel() {
@@ -251,6 +505,7 @@ async function onSubmit(event) {
             port: Number.parseInt(data.port, 10),
             username: data.username,
             authMethod: data.authMethod,
+            groupId: data.groupId ?? '',
             password: data.password ?? '',
             privateKey: pickedKey?.content ?? data.privateKey ?? '',
             keyPassphrase: data.keyPassphrase ?? '',
@@ -276,6 +531,14 @@ export function openNewHost() {
     openPanel();
 }
 
+function initDragAndDrop() {
+    const container = $('#host-groups');
+    container.addEventListener('dragover', onDragOver);
+    container.addEventListener('drop', onDrop);
+    // Dropped anywhere else: ignore it (endDrag then reverts).
+    document.addEventListener('drop', (e) => drag && e.preventDefault());
+}
+
 export function initHosts() {
     const f = form();
     f.addEventListener('submit', onSubmit);
@@ -286,6 +549,8 @@ export function initHosts() {
     });
 
     $('#add-host-button').addEventListener('click', openNewHost);
+    $('#add-group-button').addEventListener('click', createGroup);
+    initDragAndDrop();
     $('#empty-add-host').addEventListener('click', openNewHost);
     $('#close-panel').addEventListener('click', closePanel);
     $('#pick-key').addEventListener('click', pickKey);
@@ -302,6 +567,7 @@ export function initHosts() {
     });
     document.addEventListener('i18n:change', () => {
         renderList();
+        if ($('#host-panel').classList.contains('open')) fillGroupSelect(form().elements.groupId.value);
         renderPanel();
         $$('[data-reveal]').forEach((b) => setRevealed(b, b.previousElementSibling.type === 'text'));
     });

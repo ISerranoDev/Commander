@@ -15,23 +15,27 @@ const (
 // Host is a saved connection. Secrets (Password, PrivateKey, KeyPassphrase)
 // only ever live inside the encrypted vault and are never sent to the UI.
 type Host struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	Address       string    `json:"address"`
-	Port          int       `json:"port"`
-	Username      string    `json:"username"`
-	AuthMethod    string    `json:"authMethod"`
-	Password      string    `json:"password,omitempty"`
-	PrivateKey    string    `json:"privateKey,omitempty"`
-	KeyPassphrase string    `json:"keyPassphrase,omitempty"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Address       string `json:"address"`
+	Port          int    `json:"port"`
+	Username      string `json:"username"`
+	AuthMethod    string `json:"authMethod"`
+	Password      string `json:"password,omitempty"`
+	PrivateKey    string `json:"privateKey,omitempty"`
+	KeyPassphrase string `json:"keyPassphrase,omitempty"`
+	// GroupID is empty for hosts outside any group. Omitted when empty so
+	// files without groups keep the original format.
+	GroupID   string    `json:"groupId,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func (h *Host) Normalize() {
 	h.Name = strings.TrimSpace(h.Name)
 	h.Address = strings.TrimSpace(h.Address)
 	h.Username = strings.TrimSpace(h.Username)
+	h.GroupID = strings.TrimSpace(h.GroupID)
 	if h.Port == 0 {
 		h.Port = 22
 	}

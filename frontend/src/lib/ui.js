@@ -27,9 +27,9 @@ export const notifyError = (err) => toast(translateError(err), 'error');
 // ---- Modal ----------------------------------------------------------------
 
 /**
- * Opens the shared modal. With `fields` it collects password inputs and
- * resolves to {name: value}; without, it is a confirmation and resolves to
- * true. Resolves to null when cancelled.
+ * Opens the shared modal. With `fields` it collects inputs (password unless
+ * the field sets `type`) and resolves to {name: value}; without, it is a
+ * confirmation and resolves to true. Resolves to null when cancelled.
  *
  * A field with `matches: 'other'` must equal the field named `other`.
  */
@@ -45,14 +45,15 @@ export function openModal({title, message = '', fields = [], okLabel = t('dialog
     ok.className = `btn ${danger ? 'btn-danger' : 'btn-primary'}`;
     $('#modal-cancel').textContent = t('dialog.cancel');
 
-    $('#modal-fields').replaceChildren(...fields.map(({name, label}) => {
+    $('#modal-fields').replaceChildren(...fields.map(({name, label, type = 'password', value = ''}) => {
         const wrapper = document.createElement('label');
         wrapper.className = 'field';
         const caption = document.createElement('span');
         caption.textContent = label;
         const input = document.createElement('input');
-        input.type = 'password';
+        input.type = type;
         input.name = name;
+        input.value = value;
         input.required = true;
         wrapper.append(caption, input);
         return wrapper;
@@ -85,7 +86,9 @@ export function openModal({title, message = '', fields = [], okLabel = t('dialog
         $('#modal-cancel').addEventListener('click', onCancel);
         dialog.addEventListener('cancel', onCancel);
         dialog.showModal();
-        ($('input', dialog) ?? ok).focus();
+        const first = $('input', dialog);
+        (first ?? ok).focus();
+        first?.select();
     });
 }
 

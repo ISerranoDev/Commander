@@ -640,12 +640,13 @@ input:focus, textarea:focus, select:focus {
     background: var(--surface);
 }
 
-.view-header .btn-primary {
+.view-header .header-actions {
+    display: flex;
+    gap: 8px;
     margin-left: auto;
 }
 
 .section-title {
-    margin-bottom: 14px;
     font-size: 12px;
     font-weight: 650;
     letter-spacing: 0.6px;
@@ -656,6 +657,115 @@ input:focus, textarea:focus, select:focus {
 /* ==========================================================================
    Host cards
    ========================================================================== */
+
+/* Each group is a full-width row; ungrouped hosts come last. */
+.host-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+}
+
+.host-section {
+    min-width: 0;
+}
+
+.host-section.drop-only {
+    display: none;
+}
+
+.host-groups.dragging-host .host-section.drop-only {
+    display: block;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    margin-bottom: 10px;
+}
+
+.section-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.section-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-faint);
+}
+
+.section-grip {
+    margin-left: -4px;
+    color: var(--text-faint);
+    cursor: grab;
+}
+
+.section-grip svg {
+    width: 14px;
+    height: 14px;
+}
+
+.is-group .section-header {
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    cursor: grab;
+}
+
+.section-actions {
+    display: flex;
+    gap: 2px;
+    margin-left: auto;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.section-header:hover .section-actions, .section-actions:focus-within {
+    opacity: 1;
+}
+
+.section-actions .btn-icon {
+    width: 26px;
+    height: 26px;
+}
+
+.section-actions .btn-icon .icon, .section-actions .btn-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Empty groups show where hosts can be dropped. */
+.host-grid:empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 64px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius);
+}
+
+.host-grid:empty::after {
+    content: attr(data-empty);
+    font-size: 12px;
+    color: var(--text-faint);
+}
+
+.host-groups.dragging-host .host-grid {
+    min-height: 64px;
+    border-radius: var(--radius);
+    outline: 1px dashed var(--border);
+    outline-offset: 4px;
+}
+
+.dragging {
+    opacity: 0.4;
+}
+
+.host-section.dragging {
+    opacity: 0.5;
+}
 
 .host-grid {
     display: grid;
@@ -1654,4 +1764,8 @@ body.platform-darwin .tabbar {
 #modal-message {
     white-space: pre-line;
     word-break: break-word;
+}
+
+select.full {
+    width: 100%;
 }

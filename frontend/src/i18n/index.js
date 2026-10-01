@@ -50,6 +50,8 @@ const backendErrors = {
     'vault is locked': 'locked',
     'vault already exists': 'exists',
     'host not found': 'hostNotFound',
+    'group not found': 'groupNotFound',
+    'group name is required': 'groupNameRequired',
     'password must be at least 8 characters': 'weakPassword',
     'name is required': 'nameRequired',
     'address is required': 'addressRequired',

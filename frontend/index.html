@@ -97,15 +97,20 @@
                         <i data-icon="search"></i>
                         <input type="search" id="search-bar" data-i18n-placeholder="hosts.search"/>
                     </label>
-                    <button class="btn btn-primary" id="add-host-button">
-                        <i data-icon="plus"></i>
-                        <span data-i18n="hosts.new"></span>
-                    </button>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary" id="add-group-button">
+                            <i data-icon="folderPlus"></i>
+                            <span data-i18n="groups.new"></span>
+                        </button>
+                        <button class="btn btn-primary" id="add-host-button">
+                            <i data-icon="plus"></i>
+                            <span data-i18n="hosts.new"></span>
+                        </button>
+                    </div>
                 </header>
 
                 <div class="view-body">
-                    <h2 class="section-title" data-i18n="hosts.title"></h2>
-                    <div id="host-grid" class="host-grid"></div>
+                    <div id="host-groups" class="host-groups"></div>
 
                     <p id="no-results" class="muted" hidden></p>
 
@@ -206,6 +211,10 @@
                     <label class="field">
                         <span data-i18n="host.name"></span>
                         <input type="text" name="name" data-i18n-placeholder="host.namePlaceholder" required/>
+                    </label>
+                    <label class="field">
+                        <span data-i18n="host.group"></span>
+                        <select name="groupId" class="full"></select>
                     </label>
                     <div class="field-row">
                         <label class="field grow">
