@@ -30,3 +30,14 @@ func TestValidateKeyRequired(t *testing.T) {
 		t.Fatal("key auth without key must fail")
 	}
 }
+
+func TestProjectNormalizeDropsBlankCredentials(t *testing.T) {
+	p := Project{Name: " web ", Credentials: []Credential{{Name: "  "}, {Name: "db", Password: "x"}}}
+	p.Normalize()
+	if p.Name != "web" || len(p.Credentials) != 1 || p.Credentials[0].Name != "db" {
+		t.Fatalf("got %+v", p)
+	}
+	if (Project{}).Validate() == nil {
+		t.Fatal("project without name must fail")
+	}
+}

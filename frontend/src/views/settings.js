@@ -40,8 +40,8 @@ const actions = {
             });
             if (!values) return;
             try {
-                const count = await ImportHosts(values.passphrase);
-                notify(t('toast.imported', {count}));
+                const imported = await ImportHosts(values.passphrase);
+                notify(t('toast.imported', imported));
                 await onHostsChanged();
                 return;
             } catch (err) {

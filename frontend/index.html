@@ -76,6 +76,11 @@
                 <span data-i18n="nav.hosts"></span>
                 <span class="nav-count" id="host-count"></span>
             </button>
+            <button class="nav-item" data-view="projects">
+                <i data-icon="briefcase"></i>
+                <span data-i18n="nav.projects"></span>
+                <span class="nav-count" id="project-count"></span>
+            </button>
             <button class="nav-item" data-view="settings">
                 <i data-icon="settings"></i>
                 <span data-i18n="nav.settings"></span>
@@ -121,6 +126,39 @@
                         <button class="btn btn-primary" id="empty-add-host">
                             <i data-icon="plus"></i>
                             <span data-i18n="hosts.new"></span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Projects -->
+            <section id="view-projects" class="view" hidden>
+                <header class="view-header">
+                    <label class="search">
+                        <i data-icon="search"></i>
+                        <input type="search" id="project-search" data-i18n-placeholder="projects.search"/>
+                    </label>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" id="add-project-button">
+                            <i data-icon="plus"></i>
+                            <span data-i18n="projects.new"></span>
+                        </button>
+                    </div>
+                </header>
+
+                <div class="view-body">
+                    <h2 class="section-title list-title" id="project-title" data-i18n="projects.title"></h2>
+                    <div id="project-grid" class="project-grid"></div>
+
+                    <p id="project-no-results" class="muted" hidden></p>
+
+                    <div id="project-empty" class="empty" hidden>
+                        <div class="empty-icon"><i data-icon="briefcase"></i></div>
+                        <h3 data-i18n="projects.emptyTitle"></h3>
+                        <p class="muted" data-i18n="projects.emptyText"></p>
+                        <button class="btn btn-primary" id="empty-add-project">
+                            <i data-icon="plus"></i>
+                            <span data-i18n="projects.new"></span>
                         </button>
                     </div>
                 </div>
@@ -286,6 +324,15 @@
                         </label>
                     </div>
                 </div>
+
+                <div class="form-section" id="host-projects-section" hidden>
+                    <h4 data-i18n="host.projects"></h4>
+                    <div id="host-projects" class="host-project-list"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="host-add-project">
+                        <i data-icon="plus"></i>
+                        <span data-i18n="host.addProject"></span>
+                    </button>
+                </div>
             </form>
 
             <footer class="panel-footer">
@@ -298,6 +345,56 @@
                     <span data-i18n="hosts.connect"></span>
                 </button>
                 <button type="submit" form="host-form" class="btn btn-primary" data-i18n="host.save"></button>
+            </footer>
+        </aside>
+
+        <!-- Project editor -->
+        <aside id="project-panel" class="panel" aria-hidden="true">
+            <header class="panel-header">
+                <h2 id="project-panel-title"></h2>
+                <button type="button" class="btn-icon" id="close-project-panel"><i data-icon="x"></i></button>
+            </header>
+
+            <form id="project-form" class="panel-body" autocomplete="off">
+                <input type="hidden" name="id"/>
+
+                <div class="form-section">
+                    <h4 data-i18n="project.general"></h4>
+                    <label class="field">
+                        <span data-i18n="project.name"></span>
+                        <input type="text" name="name" data-i18n-placeholder="project.namePlaceholder" required/>
+                    </label>
+                    <label class="field">
+                        <span data-i18n="project.host"></span>
+                        <select name="hostId" class="full"></select>
+                    </label>
+                    <label class="field">
+                        <span data-i18n="project.location"></span>
+                        <input type="text" name="location" data-i18n-placeholder="project.locationPlaceholder" spellcheck="false"/>
+                    </label>
+                </div>
+
+                <div class="form-section">
+                    <h4 data-i18n="project.credentials"></h4>
+                    <div id="credential-list" class="credential-list"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="add-credential">
+                        <i data-icon="plus"></i>
+                        <span data-i18n="project.addCredential"></span>
+                    </button>
+                </div>
+
+                <div class="form-section">
+                    <h4 data-i18n="project.extra"></h4>
+                    <textarea name="extra" rows="7" class="plain" data-i18n-placeholder="project.extraPlaceholder"></textarea>
+                </div>
+            </form>
+
+            <footer class="panel-footer">
+                <button type="button" class="btn btn-ghost-danger" id="delete-project">
+                    <i data-icon="trash"></i>
+                    <span data-i18n="project.delete"></span>
+                </button>
+                <button type="submit" form="project-form" class="btn btn-primary" data-i18n="project.save"></button>
             </footer>
         </aside>
         </div>

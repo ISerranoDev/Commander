@@ -121,8 +121,8 @@ func TestExportImport(t *testing.T) {
 		t.Fatalf("export must not open with another password, got %v", err)
 	}
 	n, err := dst.Import(export, "export-pass")
-	if err != nil || n != 1 {
-		t.Fatalf("n=%d err=%v", n, err)
+	if err != nil || n.Hosts != 1 {
+		t.Fatalf("n=%+v err=%v", n, err)
 	}
 	// Re-importing replaces by ID instead of duplicating.
 	if _, err := dst.Import(export, "export-pass"); err != nil {

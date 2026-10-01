@@ -54,8 +54,8 @@ func TestTransferRoundTrip(t *testing.T) {
 		t.Fatal("chosen file must survive a wrong passphrase")
 	}
 	n, err := dst.ImportHosts("backup-pass")
-	if err != nil || n != 1 {
-		t.Fatalf("n=%d err=%v", n, err)
+	if err != nil || n.Hosts != 1 {
+		t.Fatalf("n=%+v err=%v", n, err)
 	}
 	if dst.transfer.importPath != "" {
 		t.Fatal("import path not cleared")

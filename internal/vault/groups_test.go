@@ -80,8 +80,8 @@ func TestImportV1ExportWithoutGroups(t *testing.T) {
 		t.Fatal(err)
 	}
 	n, err := v.Import(path, "export-pass")
-	if err != nil || n != 2 {
-		t.Fatalf("n=%d err=%v", n, err)
+	if err != nil || n.Hosts != 2 || n.Projects != 0 {
+		t.Fatalf("n=%+v err=%v", n, err)
 	}
 	// Old files keep their former (alphabetical) order and land ungrouped.
 	want := []string{"mine@" + g.ID, "Alpha@", "zeta@"}

@@ -25,12 +25,13 @@ import (
 const MinPasswordLength = 8
 
 var (
-	ErrLocked        = errors.New("vault is locked")
-	ErrExists        = errors.New("vault already exists")
-	ErrNotExists     = errors.New("vault does not exist")
-	ErrNotFound      = errors.New("host not found")
-	ErrGroupNotFound = errors.New("group not found")
-	ErrWeakPassword  = fmt.Errorf("password must be at least %d characters", MinPasswordLength)
+	ErrLocked          = errors.New("vault is locked")
+	ErrExists          = errors.New("vault already exists")
+	ErrNotExists       = errors.New("vault does not exist")
+	ErrNotFound        = errors.New("host not found")
+	ErrGroupNotFound   = errors.New("group not found")
+	ErrProjectNotFound = errors.New("project not found")
+	ErrWeakPassword    = fmt.Errorf("password must be at least %d characters", MinPasswordLength)
 )
 
 // data is the plaintext document stored inside the encrypted file.
@@ -40,12 +41,15 @@ type data struct {
 	// Groups are listed in display order; hosts are too (within and
 	// across groups). Absent in files written before groups existed.
 	Groups []model.Group `json:"groups,omitempty"`
+	// Projects reference their host by ID. Absent in older files.
+	Projects []model.Project `json:"projects,omitempty"`
 	// KnownHosts maps "host:port" to the trusted server key in
 	// authorized_keys format ("ssh-ed25519 AAAA...").
 	KnownHosts map[string]string `json:"knownHosts,omitempty"`
 }
 
-// Version 2 added groups and made the stored host order the display order.
+// Version 2 added groups (and later projects) and made the stored host order
+// the display order. Both are optional, so version 1 files still load.
 const dataVersion = 2
 
 type Vault struct {
@@ -89,7 +93,7 @@ func (v *Vault) Create(password string, initial []model.Host) error {
 	if err != nil {
 		return err
 	}
-	d := &data{Version: dataVersion, Hosts: []model.Host{}, Groups: []model.Group{}, KnownHosts: map[string]string{}}
+	d := &data{Version: dataVersion, Hosts: []model.Host{}, Groups: []model.Group{}, Projects: []model.Project{}, KnownHosts: map[string]string{}}
 	for _, h := range initial {
 		d.Hosts = append(d.Hosts, prepareNew(h))
 	}
@@ -234,7 +238,16 @@ func (v *Vault) DeleteHost(id string) error {
 	if i < 0 {
 		return ErrNotFound
 	}
-	return v.commit(slices.Delete(slices.Clone(v.data.Hosts), i, i+1), v.data.Groups)
+	// Its projects are kept, without a host.
+	d := v.draft()
+	d.Hosts = slices.Delete(slices.Clone(v.data.Hosts), i, i+1)
+	d.Projects = slices.Clone(v.data.Projects)
+	for j := range d.Projects {
+		if d.Projects[j].HostID == id {
+			d.Projects[j].HostID = ""
+		}
+	}
+	return v.commitData(d)
 }
 
 func (v *Vault) Groups() ([]model.Group, error) {
@@ -379,25 +392,30 @@ func (v *Vault) Export(path, passphrase string) error {
 	return writeEncrypted(path, key, v.data)
 }
 
-// Import merges hosts and groups from an export file. Hosts and groups whose
+// Imported counts what Import added or replaced.
+type Imported struct {
+	Hosts    int `json:"hosts"`
+	Projects int `json:"projects"`
+}
+
+// Import merges hosts, groups and projects from an export file. Items whose
 // ID already exists are replaced; the rest are added. Files written before
-// groups existed import as ungrouped hosts. It returns how many hosts were
-// imported.
-func (v *Vault) Import(path, passphrase string) (int, error) {
+// groups or projects existed import as ungrouped hosts only.
+func (v *Vault) Import(path, passphrase string) (Imported, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return 0, err
+		return Imported{}, err
 	}
 	in, key, err := decode([]byte(passphrase), raw)
 	if err != nil {
-		return 0, err
+		return Imported{}, err
 	}
 	key.wipe()
 
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	if v.key == nil {
-		return 0, ErrLocked
+		return Imported{}, ErrLocked
 	}
 	groups := slices.Clone(v.data.Groups)
 	for _, g := range in.Groups {
@@ -433,18 +451,50 @@ func (v *Vault) Import(path, passphrase string) (int, error) {
 		}
 		next = append(next, h)
 	}
-	if err := v.commit(next, groups); err != nil {
-		return 0, err
+
+	projects := slices.Clone(v.data.Projects)
+	importedProjects := 0
+	for _, p := range in.Projects {
+		p.Normalize()
+		if p.ID == "" || p.Validate() != nil {
+			continue
+		}
+		if slices.IndexFunc(next, func(h model.Host) bool { return h.ID == p.HostID }) < 0 {
+			p.HostID = ""
+		}
+		importedProjects++
+		if i := slices.IndexFunc(projects, func(x model.Project) bool { return x.ID == p.ID }); i >= 0 {
+			projects[i] = p
+			continue
+		}
+		projects = append(projects, p)
 	}
-	return imported, nil
+
+	d := v.draft()
+	d.Hosts, d.Groups, d.Projects = next, groups, projects
+	if err := v.commitData(d); err != nil {
+		return Imported{}, err
+	}
+	return Imported{Hosts: imported, Projects: importedProjects}, nil
 }
 
-// commit persists hosts and groups and only then swaps them into memory, so
-// a failed write never leaves memory and disk out of sync. Caller holds v.mu.
+// draft is a shallow copy of the document to change and pass to commitData.
+// Slices must be cloned before modifying them. Caller holds v.mu.
+func (v *Vault) draft() *data {
+	d := *v.data
+	d.Version = dataVersion
+	return &d
+}
+
+// commit replaces hosts and groups, keeping everything else.
 func (v *Vault) commit(hosts []model.Host, groups []model.Group) error {
-	return v.commitData(&data{Version: dataVersion, Hosts: hosts, Groups: groups, KnownHosts: v.data.KnownHosts})
+	d := v.draft()
+	d.Hosts, d.Groups = hosts, groups
+	return v.commitData(d)
 }
 
+// commitData persists d and only then swaps it into memory, so a failed
+// write never leaves memory and disk out of sync. Caller holds v.mu.
 func (v *Vault) commitData(d *data) error {
 	if err := writeEncrypted(v.path, v.key, d); err != nil {
 		return err
@@ -477,7 +527,9 @@ func (v *Vault) TrustHost(hostport, key string) error {
 		known = map[string]string{}
 	}
 	known[hostport] = key
-	return v.commitData(&data{Version: dataVersion, Hosts: v.data.Hosts, Groups: v.data.Groups, KnownHosts: known})
+	d := v.draft()
+	d.KnownHosts = known
+	return v.commitData(d)
 }
 
 func (v *Vault) indexOf(id string) int {
@@ -530,6 +582,9 @@ func upgrade(d *data) {
 	if d.Groups == nil {
 		d.Groups = []model.Group{}
 	}
+	if d.Projects == nil {
+		d.Projects = []model.Project{}
+	}
 	if d.Version < 2 {
 		// The UI used to sort hosts by name; keep that order now that the
 		// stored order is the one shown.
@@ -538,10 +593,19 @@ func upgrade(d *data) {
 		})
 	}
 	known := groupIDs(d.Groups)
+	hostIDs := map[string]bool{}
 	for i := range d.Hosts {
+		hostIDs[d.Hosts[i].ID] = true
 		if !known[d.Hosts[i].GroupID] {
 			d.Hosts[i].GroupID = ""
 		}
+	}
+	for i := range d.Projects {
+		p := &d.Projects[i]
+		if !hostIDs[p.HostID] {
+			p.HostID = ""
+		}
+		assignCredentialIDs(p)
 	}
 }
 

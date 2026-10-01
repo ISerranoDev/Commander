@@ -7,6 +7,7 @@ import {
     ListHosts,
     ReadKeyFile,
     ReorderGroups,
+    ListProjects,
     RevealSecret,
     SaveGroup,
     SaveHost,
@@ -15,10 +16,15 @@ import {t} from '../i18n';
 import {hueFor} from '../lib/color';
 import {icon} from '../lib/icons';
 import {$, $$, confirmDanger, notify, notifyError, openModal} from '../lib/ui';
+import {openProject} from './projects';
 import {connectTo} from './sessions';
 
 let hosts = [];
 let groups = [];
+// Project names by host ID, so searching a project finds its host.
+let projectsByHost = new Map();
+// Current search, lowercased.
+let needle = '';
 // Host being edited (HostSummary) or null for a new one.
 let editing = null;
 // Private key chosen with the file picker in this form session.
@@ -31,18 +37,42 @@ let drag = null;
 // Hosts and groups come in display order; dragging changes it.
 export async function loadHosts() {
     try {
-        const [h, g] = await Promise.all([ListHosts(), ListGroups()]);
+        const [h, g, p] = await Promise.all([ListHosts(), ListGroups(), ListProjects()]);
         hosts = h ?? [];
         groups = g ?? [];
+        setProjects(p ?? []);
         renderList();
     } catch (err) {
         notifyError(err);
     }
 }
 
+function setProjects(projects) {
+    projectsByHost = new Map();
+    for (const p of [...projects].sort((a, b) => a.name.localeCompare(b.name))) {
+        if (!p.hostId) continue;
+        if (!projectsByHost.has(p.hostId)) projectsByHost.set(p.hostId, []);
+        projectsByHost.get(p.hostId).push(p);
+    }
+}
+
+async function reloadProjects() {
+    try {
+        setProjects((await ListProjects()) ?? []);
+        renderList();
+        if (editing) renderHostProjects();
+    } catch (err) {
+        notifyError(err);
+    }
+}
+
+const projectsOf = (host) => projectsByHost.get(host.id) ?? [];
+const matchedProjects = (host) => (needle ? projectsOf(host).filter((p) => p.name.toLowerCase().includes(needle)) : []);
+
 export function clearHosts() {
     hosts = [];
     groups = [];
+    projectsByHost = new Map();
     $('#host-groups').replaceChildren();
     closePanel();
 }
@@ -50,10 +80,10 @@ export function clearHosts() {
 function renderList() {
     if (drag) return; // a reload mid-drag would drop the dragged element
     const term = $('#search-bar').value.trim();
-    const needle = term.toLowerCase();
+    needle = term.toLowerCase();
     const searching = needle !== '';
     const visible = hosts.filter((h) =>
-        [h.name, h.address, h.username].some((v) => v.toLowerCase().includes(needle)),
+        [h.name, h.address, h.username].some((v) => v.toLowerCase().includes(needle)) || matchedProjects(h).length,
     );
 
     $('#host-count').textContent = hosts.length || '';
@@ -315,6 +345,13 @@ function hostCard(host, draggable) {
     const target = document.createElement('small');
     target.textContent = `${host.username}@${host.address}${host.port === 22 ? '' : `:${host.port}`}`;
     text.append(name, target);
+    const matches = matchedProjects(host);
+    if (matches.length) {
+        const match = document.createElement('small');
+        match.className = 'host-project-match';
+        match.textContent = t('hosts.projectMatch', {names: matches.map((p) => p.name).join(', ')});
+        text.append(match);
+    }
 
     const edit = document.createElement('button');
     edit.type = 'button';
@@ -360,6 +397,7 @@ function openPanel(host = null, groupId = '') {
     $('.paste-key').open = false;
     $$('[data-reveal]').forEach((button) => setRevealed(button, false));
     $('#delete-host').hidden = !host;
+    renderHostProjects();
     $('#panel-connect').hidden = !host;
 
     renderPanel();
@@ -382,11 +420,33 @@ function fillGroupSelect(selected) {
     select.value = groups.some((g) => g.id === selected) ? selected : '';
 }
 
+// Projects assigned to the host being edited, each opening its editor.
+function renderHostProjects() {
+    $('#host-projects-section').hidden = !editing;
+    if (!editing) return;
+    const list = projectsByHost.get(editing.id) ?? [];
+    $('#host-projects').replaceChildren(...list.map((project) => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'host-project';
+        const name = document.createElement('span');
+        name.textContent = project.name;
+        item.append(icon('briefcase'), name);
+        if (project.location) {
+            const location = document.createElement('small');
+            location.textContent = project.location;
+            item.append(location);
+        }
+        item.addEventListener('click', () => openProject(project.id));
+        return item;
+    }));
+}
+
 function closePanel() {
     editing = null;
     pickedKey = null;
     $('#host-panel').classList.remove('open');
-    $('#home').classList.remove('panel-open');
+    if (!$('#project-panel').classList.contains('open')) $('#home').classList.remove('panel-open');
     $('#host-panel').setAttribute('aria-hidden', 'true');
     $$('.host-card.active').forEach((el) => el.classList.remove('active'));
 }
@@ -482,13 +542,16 @@ async function pickKey() {
 
 async function deleteHost() {
     if (!editing) return;
-    const ok = await confirmDanger(t('host.deleteTitle'), t('host.deleteMessage', {name: editing.name}), t('host.delete'));
+    const count = projectsOf(editing).length;
+    const message = t('host.deleteMessage', {name: editing.name}) + (count ? t('host.deleteProjects', {count}) : '');
+    const ok = await confirmDanger(t('host.deleteTitle'), message, t('host.delete'));
     if (!ok) return;
     try {
         await DeleteHost(editing.id);
         closePanel();
         notify(t('host.deleted'));
         await loadHosts();
+        document.dispatchEvent(new CustomEvent('hosts:change'));
     } catch (err) {
         notifyError(err);
     }
@@ -513,6 +576,7 @@ async function onSubmit(event) {
         closePanel();
         notify(t('host.saved'));
         await loadHosts();
+        document.dispatchEvent(new CustomEvent('hosts:change'));
     } catch (err) {
         notifyError(err);
     }
@@ -561,6 +625,9 @@ export function initHosts() {
         button.addEventListener('click', () => toggleReveal(button));
     });
     $('#search-bar').addEventListener('input', renderList);
+    $('#host-add-project').addEventListener('click', () => editing && openProject(null, editing.id));
+    document.addEventListener('projects:change', reloadProjects);
+    document.addEventListener('view:change', (event) => event.detail !== 'hosts' && closePanel());
 
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && $('#host-panel').classList.contains('open') && !$('#modal').open) closePanel();

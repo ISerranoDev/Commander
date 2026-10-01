@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"github.com/ISerranoDev/WailsCommander/internal/vault"
 )
 
 // Backup files use the same opaque encrypted format as the vault.
@@ -95,16 +97,16 @@ func (a *App) ChooseImportFile() (ChosenFile, error) {
 
 // ImportHosts merges the file chosen with ChooseImportFile into the vault.
 // The chosen file is kept after a wrong passphrase so the user can retry.
-func (a *App) ImportHosts(passphrase string) (int, error) {
+func (a *App) ImportHosts(passphrase string) (vault.Imported, error) {
 	a.transfer.mu.Lock()
 	path := a.transfer.importPath
 	a.transfer.mu.Unlock()
 	if path == "" {
-		return 0, errNoFileChosen
+		return vault.Imported{}, errNoFileChosen
 	}
 	n, err := a.vault.Import(path, passphrase)
 	if err != nil {
-		return 0, err
+		return vault.Imported{}, err
 	}
 	a.transfer.mu.Lock()
 	a.transfer.importPath = ""

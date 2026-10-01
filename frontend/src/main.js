@@ -5,8 +5,10 @@ import {applyTranslations, t} from './i18n';
 import {hydrateIcons} from './lib/icons';
 import {initPlatform} from './lib/platform';
 import {getSettings, loadSettings} from './lib/settings';
+import {showView} from './lib/nav';
 import {$, $$, notify} from './lib/ui';
 import {clearHosts, initHosts, loadHosts} from './views/hosts';
+import {clearProjects, initProjects, loadProjects} from './views/projects';
 import {initSessions} from './views/sessions';
 import {initSettings, renderSettings} from './views/settings';
 import {initUnlock, showUnlock} from './views/unlock';
@@ -21,6 +23,7 @@ async function route() {
     } else {
         stopIdleTimer();
         clearHosts();
+        clearProjects();
         showUnlock(status, route);
     }
 }
@@ -30,12 +33,7 @@ async function showApp() {
     $('#app-screen').hidden = false;
     showView('hosts');
     resetIdleTimer();
-    await loadHosts();
-}
-
-function showView(name) {
-    $$('.view').forEach((view) => (view.hidden = view.id !== `view-${name}`));
-    $$('.nav-item[data-view]').forEach((item) => item.classList.toggle('active', item.dataset.view === name));
+    await Promise.all([loadHosts(), loadProjects()]);
 }
 
 async function lock() {
@@ -75,7 +73,8 @@ async function boot() {
 
     initUnlock();
     initHosts();
-    initSettings({onChanged: loadHosts});
+    initProjects();
+    initSettings({onChanged: () => Promise.all([loadHosts(), loadProjects()])});
     initSessions();
     $$('.nav-item[data-view]').forEach((item) => item.addEventListener('click', () => showView(item.dataset.view)));
     $('#lock-button').addEventListener('click', lock);
